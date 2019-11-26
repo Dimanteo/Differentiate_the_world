@@ -1,105 +1,61 @@
 #include <string.h>
-#include <cmath>
-#include <cctype>
+#include <windows.h>
 #include "Tree_t\Tree.cpp"
 #include "My_Headers\txt_files.h"
+#include "MathObject.h"
+#include "Function.h"
+#include "Parser.h"
 
 class Differentiator {
 
 public:
-    const char BEGIN_SEPARATOR = '(';
-    const char END_SEPARATOR = ')';
-    const static int FUNCTIONS_NUMBER = 4;
     const static size_t VARIABLES_MAX_COUNT = 100;
-    const static size_t MATH_OBJECT_MAX_LENGTH = 30;
-
-    enum MATH_OBJECT_TYPE {
-        POISON_TYPE = 0, NUMBER_TYPE = 'N', OPERATION_TYPE = 'O', VARIABLE_TYPE = 'V'
-    };
-
-    struct MathObject {
-        MATH_OBJECT_TYPE type;
-        union {
-            int code;
-            double num;
-        };
-    };
-
-    struct Function {
-        char token[5];
-        void (*texPrint)(FILE* Latex, Tree<MathObject>* node);
-        //TODO ссылка на функцию дифференцирования.
-
-        //функции печати в tex
-        static void sumTex(FILE* Latex, Tree<MathObject>* node);
-        static void subTex(FILE* Latex, Tree<MathObject>* node);
-        static void mulTex(FILE* Latex, Tree<MathObject>* node);
-        static void divTex(FILE* Latex, Tree<MathObject>* node);
-    };
-
-
-    Function functions[FUNCTIONS_NUMBER] = {
-            {"+", Function::sumTex},
-            {"-", Function::subTex},
-            {"*", Function::mulTex},
-            {"/", Function::divTex}};
-
-
     char *variables[VARIABLES_MAX_COUNT];
-
     size_t variables_count = 0;
-    Tree<MathObject>* tree;
-
-    Differentiator();
-
-    Differentiator(char begin_separator, char end_separator);
+    Tree<MathObject>* tree = nullptr;
 
     ~Differentiator();
 
-    char *readNode(char *ptr, Tree<MathObject> *node);
-
     void parse(FILE* in);
-
-    MathObject translateMathObject(char *buffer);
 
     void dump(const char outFileName[], const char state[], const char message[], const char file[], const char function[], int line);
 
-    void texDump(const char *filename, Tree<MathObject>* node);
+    void texDump(char *buffer, Tree<MathObject>* node);
 
 };
 
 template<>
-void  Tree<Differentiator::MathObject>::valuePrint(FILE *file) {
+void  Tree<MathObject>::valuePrint(FILE *file) {
     switch (value.type) {
-        case Differentiator::NUMBER_TYPE:
-            fprintf(file, "Number(%d) %lf", value.type, value.num);
+        case MathObject::NUMBER_TYPE:
+            fprintf(file, "Number(%d) %g", value.type, value.num);
             break;
-        case Differentiator::OPERATION_TYPE:
-            fprintf(file, "Operation(%d) %d", value.type, value.code);
+        case MathObject::OPERATION_TYPE:
+            fprintf(file, "Operation(%d) [%d] %s", value.type, value.code, FUNCTIONS[value.code]->token);
             break;
-        case Differentiator::VARIABLE_TYPE:
+        case MathObject::VARIABLE_TYPE:
             fprintf(file, "Variable(%d) [%d]",value.type, value.code);
             break;
-        case Differentiator::POISON_TYPE:
+        case MathObject::POISON_TYPE:
             fprintf(file, "void");
             break;
     }
 }
 
 template<>
-void Tree<Differentiator::MathObject>::valueDestruct() {
+void Tree<MathObject>::valueDestruct() {
     switch (value.type) {
-        case Differentiator::NUMBER_TYPE:
+        case MathObject::NUMBER_TYPE:
             value.num = 0;
             break;
-        case Differentiator::OPERATION_TYPE:
+        case MathObject::OPERATION_TYPE:
             value.code = 0;
             break;
-        case Differentiator::VARIABLE_TYPE:
+        case MathObject::VARIABLE_TYPE:
             value.code = 0;
             break;
     }
-    value.type = Differentiator::POISON_TYPE;
+    value.type = MathObject::POISON_TYPE;
 }
 
 int main() {
@@ -109,14 +65,10 @@ int main() {
     fclose(file);
     FILE* log = fopen("../Debug/Diff.txt", "wb");
     fclose(log);
+    FILE* latex = fopen("../Debug/Diff.tex", "wb");
     laba_killer->dump("../Debug/Diff", OK_STATE, "call from main", __FILE__, __PRETTY_FUNCTION__, __LINE__);
     return 0;
 }
-
-Differentiator::Differentiator() : tree(nullptr), variables_count(0) {}
-
-Differentiator::Differentiator(const char begin_separator, const char end_separator) :
-                    tree(nullptr), variables_count(0), BEGIN_SEPARATOR(begin_separator), END_SEPARATOR(end_separator) {}
 
 Differentiator::~Differentiator() {
     delete tree;
@@ -126,82 +78,19 @@ Differentiator::~Differentiator() {
     variables_count = 0;
 }
 
-char* Differentiator::readNode(char *ptr, Tree<Differentiator::MathObject> *node) {
-    assert(node);
-    assert(ptr);
-
-    ptr++;
-    while (isspace(*ptr))
-        ptr++;
-    if (*ptr == BEGIN_SEPARATOR) {
-        node->growChild(LEFT_CHILD, {});
-        ptr = readNode(ptr, node->getChild(LEFT_CHILD));
-    }
-
-    while (isspace(*ptr))
-        ptr++;
-    node->setValue(translateMathObject(ptr));
-
-    if (strchr(ptr, BEGIN_SEPARATOR) != nullptr && strchr(ptr, BEGIN_SEPARATOR) < strchr(ptr, END_SEPARATOR)) {
-        node->growChild(RIGHT_CHILD, {});
-        ptr = strchr(ptr, BEGIN_SEPARATOR);
-        ptr = readNode(ptr, node->getChild(RIGHT_CHILD));
-    }
-    ptr = strchr(ptr, END_SEPARATOR) + 1;
-    return ptr;
-}
-
-
- Differentiator::MathObject Differentiator::translateMathObject(char* buffer) {
-    assert(buffer);
-
-     while (isspace(*buffer) || *buffer == BEGIN_SEPARATOR || *buffer == END_SEPARATOR)
-         buffer++;
-
-    double num = NAN;
-    int is_num = 0;
-    is_num = sscanf(buffer, "%lf", &num);
-    if (is_num) {
-        return MathObject{NUMBER_TYPE, {.num = num}};
-    }
-
-    char input[Differentiator::MATH_OBJECT_MAX_LENGTH] = {};
-    char format[8] = "%[^ ";
-    strcat(format, &BEGIN_SEPARATOR);
-    strcat(format, &END_SEPARATOR);
-    strcat(format, "]");
-    sscanf(buffer, format, input);
-    assert(strlen(input) != 0);
-
-    for (int i = 0; i < FUNCTIONS_NUMBER; ++i) {
-        if (strcmp(functions[i].token, input) == 0) {
-            return MathObject{OPERATION_TYPE, {.code = i}};
-        }
-    }
-    //if it's variable
-    for (int i = 0; i < variables_count; ++i) {
-        if(strcmp(variables[i], input) == 0) {
-            variables[i] = strdup(input);
-            return MathObject{VARIABLE_TYPE, {.code = i}};
-        }
-    }
-    //if it's new variable
-    variables[variables_count] = strdup(input);
-    return MathObject{VARIABLE_TYPE, {.code = (int)variables_count++}};
-}
-
 void Differentiator::parse(FILE *in) {
-    tree = new Tree<MathObject>(MathObject{POISON_TYPE , {.num = NAN}});
     size_t buffer_size = 0;
     char* buffer = read_file_to_buffer_alloc(in, "rb", &buffer_size);
-    readNode(buffer, tree);
+    Parser parser = Parser();
+    tree = parser.parseLine(buffer);
     free(buffer);
 }
 
 void Differentiator::dump(const char outFileName[], const char state[], const char message[], const char file[], const char function[], int line) {
-    Tree<Differentiator::MathObject>** seq = tree->allocTree();
+    Tree<MathObject>** seq = tree->allocTree();
     tree->inorder(seq);
-    char* extensionName = (char*)calloc(strlen(outFileName) + 5, sizeof(extensionName[0]));
+    size_t outFileLength = strlen(outFileName);
+    char* extensionName = (char*)calloc(outFileLength + 5, sizeof(extensionName[0]));
     strcpy(extensionName, outFileName);
     strcat(extensionName, ".txt");
     FILE* log = fopen(extensionName, "ab");
@@ -217,26 +106,67 @@ void Differentiator::dump(const char outFileName[], const char state[], const ch
     fprintf(log, "END </Differentiator dump>\n");
     fclose(log);
 
-    strcpy(extensionName, outFileName);
+    extensionName[outFileLength] = '\0';
     strcat(extensionName, ".png");
     tree->graphDump(extensionName, seq);
+
+    extensionName[outFileLength] = '\0';
+    strcat(extensionName, ".tex");
+    char* buffer = (char*)calloc(1, sizeof(buffer[0]));
+    texDump(buffer, tree);
+    printf("<%s>", buffer);
+    FILE* latex = fopen(extensionName, "ab");
+    fprintf(latex, "\\documentclass[a4paper,12pt]{article}\n"
+                   "\\usepackage[T2A]{fontenc}\n"
+                   "\\usepackage[utf8]{inputenc}\n"
+                   "\\usepackage[english,russian]{babel}\n"
+                   "\\usepackage{amsmath,amsfonts,amssymb,amsthm,mathtools} \n"
+                   "\\usepackage{float}\n"
+                   "\\usepackage{wasysym}\n"
+                   "\\begin{document}\n");
+    fprintf(latex, "\\begin{equation}\n");
+    fwrite(buffer, sizeof(buffer[0]), strlen(buffer), latex);
+    fprintf(latex, "\n\\end{equation}\n"
+                   "\\end{document}");
+    fclose(latex);
 
     free(extensionName);
 }
 
-void Differentiator::texDump(const char filename[], Tree<MathObject>* node) {
-    FILE* LaTex = fopen(filename, "ab");
-    fprintf(LaTex, "\\begin{equation}\n");
+void Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
     switch (node->getValue().type) {
-        case NUMBER_TYPE:
-            fprintf(LaTex, "(%g)", node->getValue().num);
+        case MathObject::NUMBER_TYPE: {
+            char num_string[MathObject::MAX_LENGTH] = "";
+            sprintf(num_string, "%g", node->getValue().num);
+            buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(num_string));
+            strcat(buffer, num_string);
             break;
-        case OPERATION_TYPE:
-            functions[node->getValue().code].texPrint(LaTex, node);
+        }
+        case MathObject::OPERATION_TYPE: {
+            char *leftString = (char*)calloc(1, sizeof(leftString[0]));
+            if (!node->childIsEmpty(LEFT_CHILD)) {
+                texDump(leftString, node->getChild(LEFT_CHILD));
+                printf("<%s>\n", leftString);
+            }
+            char *rightString = (char*)calloc(1, sizeof(rightString[0]));
+            if (!node->childIsEmpty(RIGHT_CHILD)) {
+                texDump(rightString, node->getChild(RIGHT_CHILD));
+                printf("<%s>\n", rightString);
+            }
+            char *output = FUNCTIONS[node->getValue().code]->texPrint(node, leftString, rightString);
+            buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(output));
+            strcat(buffer, output);
+            free(output);
+            free(rightString);
+            free(leftString);
             break;
-        case VARIABLE_TYPE:
-            fprintf(LaTex, "(%s)", variables[node->getValue().code]);
+        }
+        case MathObject::VARIABLE_TYPE: {
+            char var_string[MathObject::MAX_LENGTH] = "";
+            sprintf(var_string, "%s", variables[node->getValue().code]);
+            buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(var_string));
+            strcat(buffer, var_string);
             break;
+        }
     }
-    fprintf(LaTex, "\\end{equation}\n");
 }
