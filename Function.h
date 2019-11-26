@@ -9,6 +9,7 @@
 
 struct Function {
     char* token;
+    int priority;
 
     virtual char* texPrint(Tree<MathObject>* node, char* leftString, char* rightString) = 0;
     virtual double calculate(Tree<MathObject>* node) = 0;
@@ -21,6 +22,7 @@ struct Sum : public Function {
 
     Sum() {
         token = strdup("+");
+        priority = 0;
     }
     ~Sum() {
         free(token);
@@ -29,8 +31,6 @@ struct Sum : public Function {
     char* texPrint(Tree<MathObject> *node, char* leftString, char* rightString) override {
         char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 2, sizeof(buffer[0]));
         sprintf(buffer, "%s+%s", leftString, rightString);
-        free(leftString);
-        free(rightString);
         return buffer;
     }
 
@@ -47,6 +47,7 @@ struct Sum : public Function {
 struct Sub : public Function {
     Sub() {
         token = strdup("-");
+        priority = 0;
     }
     ~Sub() {
         free(token);
@@ -55,8 +56,6 @@ struct Sub : public Function {
     char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
         char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 2, sizeof(buffer[0]));
         sprintf(buffer, "%s-%s", leftString, rightString);
-        free(leftString);
-        free(rightString);
         return buffer;
     }
 
@@ -73,6 +72,7 @@ struct Sub : public Function {
 struct Mul : public Function {
     Mul() {
         token = strdup("*");
+        priority = 1;
     }
     ~Mul() {
         free(token);
@@ -81,8 +81,6 @@ struct Mul : public Function {
     char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
         char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 5 + 1, sizeof(buffer[0]));
         sprintf(buffer, "%s \\cdot %s", leftString, rightString);
-        free(leftString);
-        free(rightString);
         return buffer;
     }
 
@@ -99,6 +97,7 @@ struct Mul : public Function {
 struct Div : Function {
     Div() {
         token = strdup("/");
+        priority = 1;
     }
     ~Div() {
         free(token);
@@ -107,8 +106,6 @@ struct Div : Function {
     char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
         char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 10 + 1, sizeof(buffer[0]));
         sprintf(buffer, "\\dfrac{%s}{%s}", leftString, rightString);
-        free(leftString);
-        free(rightString);
         return buffer;
     }
 

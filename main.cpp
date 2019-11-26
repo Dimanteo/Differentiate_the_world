@@ -1,5 +1,4 @@
 #include <string.h>
-#include <windows.h>
 #include "Tree_t\Tree.cpp"
 #include "My_Headers\txt_files.h"
 #include "MathObject.h"
@@ -20,7 +19,7 @@ public:
 
     void dump(const char outFileName[], const char state[], const char message[], const char file[], const char function[], int line);
 
-    void texDump(char *buffer, Tree<MathObject>* node);
+    char * texDump(char *buffer, Tree<MathObject>* node);
 
 };
 
@@ -113,8 +112,7 @@ void Differentiator::dump(const char outFileName[], const char state[], const ch
     extensionName[outFileLength] = '\0';
     strcat(extensionName, ".tex");
     char* buffer = (char*)calloc(1, sizeof(buffer[0]));
-    texDump(buffer, tree);
-    printf("<%s>", buffer);
+    buffer = texDump(buffer, tree);
     FILE* latex = fopen(extensionName, "ab");
     fprintf(latex, "\\documentclass[a4paper,12pt]{article}\n"
                    "\\usepackage[T2A]{fontenc}\n"
@@ -133,7 +131,7 @@ void Differentiator::dump(const char outFileName[], const char state[], const ch
     free(extensionName);
 }
 
-void Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
+char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
     switch (node->getValue().type) {
         case MathObject::NUMBER_TYPE: {
             char num_string[MathObject::MAX_LENGTH] = "";
@@ -145,17 +143,22 @@ void Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
         case MathObject::OPERATION_TYPE: {
             char *leftString = (char*)calloc(1, sizeof(leftString[0]));
             if (!node->childIsEmpty(LEFT_CHILD)) {
-                texDump(leftString, node->getChild(LEFT_CHILD));
-                printf("<%s>\n", leftString);
+                leftString = texDump(leftString, node->getChild(LEFT_CHILD));
             }
             char *rightString = (char*)calloc(1, sizeof(rightString[0]));
             if (!node->childIsEmpty(RIGHT_CHILD)) {
-                texDump(rightString, node->getChild(RIGHT_CHILD));
-                printf("<%s>\n", rightString);
+                rightString = texDump(rightString, node->getChild(RIGHT_CHILD));
             }
             char *output = FUNCTIONS[node->getValue().code]->texPrint(node, leftString, rightString);
-            buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(output));
-            strcat(buffer, output);
+            if (!node->isRoot() && FUNCTIONS[node->getValue().code]->priority < FUNCTIONS[node->getParent()->getValue().code]->priority) {
+                buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(output) + 2);
+                strcat(buffer, "(");
+                strcat(buffer, output);
+                strcat(buffer, ")");
+            } else {
+                buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(output));
+                strcat(buffer, output);
+            }
             free(output);
             free(rightString);
             free(leftString);
@@ -169,4 +172,5 @@ void Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
             break;
         }
     }
+    return buffer;
 }
