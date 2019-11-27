@@ -93,6 +93,7 @@ Differentiator::~Differentiator() {
         free(variables[i]);
     }
     free(variables);
+    variables = nullptr;
     variables_count = 0;
 }
 
@@ -170,7 +171,7 @@ char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
                 rightString = texDump(rightString, node->getChild(RIGHT_CHILD));
             }
             char *output = FUNCTIONS[node->getValue().code]->texPrint(node, leftString, rightString);
-            if (!node->isRoot() && FUNCTIONS[node->getValue().code]->priority < FUNCTIONS[node->getParent()->getValue().code]->priority) {
+            if (!node->isRoot() && !node->getParent()->childIsEmpty(LEFT_CHILD) && FUNCTIONS[node->getValue().code]->priority < FUNCTIONS[node->getParent()->getValue().code]->priority) {
                 buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(output) + 2);
                 strcat(buffer, "(");
                 strcat(buffer, output);

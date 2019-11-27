@@ -13,6 +13,7 @@ struct Parser {
     Tree<MathObject>* parseLine(const char* input, char** var_storage);
     size_t getVariablesCount();
     Tree<MathObject>* makeVal(const char* string, Tree<MathObject>* val, Tree<MathObject>* val1);
+    void skipSpaces();
 
 
     Tree<MathObject>* getG();
@@ -40,17 +41,23 @@ Tree<MathObject>* Parser::makeVal(const char* string, Tree<MathObject>* val, Tre
 }
 
 Tree<MathObject>* Parser::getG() {
+    skipSpaces();
     Tree<MathObject>* val = getE();
+    skipSpaces();
     syntax_assert(*str == '\0', '\0')
     return val;
 }
 
 Tree<MathObject>* Parser::getE() {
+    skipSpaces();
     Tree<MathObject>* val = getT();
+    skipSpaces();
     while ('+' == *str || *str == '-') {
         char op = *str;
         str++;
+        skipSpaces();
         Tree<MathObject>* val1 = getT();
+        skipSpaces();
         if (op == '+') {
             val = makeVal("+", val, val1);
         } else if (op == '-') {
@@ -61,11 +68,15 @@ Tree<MathObject>* Parser::getE() {
 }
 
 Tree<MathObject> *Parser::getT() {
+    skipSpaces();
     Tree<MathObject>* val = getPow();
+    skipSpaces();
     while  (*str == '*' || *str == '/') {
         char op = *str;
         str++;
+        skipSpaces();
         Tree<MathObject>* val1 = getPow();
+        skipSpaces();
         if (op == '*') {
             val = makeVal("*", val, val1);
         } else if (op == '/') {
@@ -76,27 +87,37 @@ Tree<MathObject> *Parser::getT() {
 }
 
 Tree<MathObject> *Parser::getPow() {
+    skipSpaces();
     Tree<MathObject>* val = getP();
+    skipSpaces();
     if (*str == '^') {
         str++;
+        skipSpaces();
         Tree<MathObject>* val1 = getP();
+        skipSpaces();
         val = makeVal("^", val, val1);
     }
     return val;
 }
 
 Tree<MathObject> *Parser::getP() {
+    skipSpaces();
     if (*str == '(') {
         str++;
+        skipSpaces();
         Tree<MathObject>* val = getE();
+        skipSpaces();
         syntax_assert(*str == ')', ')')
         str++;
+        skipSpaces();
         return val;
     } else if ('0' <= *str && *str <= '9') {
         Tree<MathObject>* val = getN();
+        skipSpaces();
         return val;
     } else {
         Tree<MathObject>* val =getFun();
+        skipSpaces();
         return val;
     }
 }
@@ -120,6 +141,7 @@ Tree<MathObject> *Parser::getN() {
 }
 
 Tree<MathObject> *Parser::getFun() {
+    skipSpaces();
     char* start = str;
     while ('a' <= *str && *str <= 'z') {
         str++;
@@ -128,6 +150,7 @@ Tree<MathObject> *Parser::getFun() {
     strncpy(name, start, str - start);
     int code = getFunctionCode(name);
     free(name);
+    skipSpaces();
     if (code == -1 || *str != '(') {
         str = start;
         Tree<MathObject>* val = getId();
@@ -135,15 +158,19 @@ Tree<MathObject> *Parser::getFun() {
         return val;
     }
     str++;
+    skipSpaces();
     Tree<MathObject>* val = getE();
+    skipSpaces();
     syntax_assert(*str == ')', ')')
     str++;
+    skipSpaces();
     Tree<MathObject>* val1 = new Tree<MathObject>(MathObject(MathObject::OPERATION_TYPE, code));
     val1->connectSubtree(RIGHT_CHILD, val);
     return val1;
 }
 
 Tree<MathObject> *Parser::getId() {
+    skipSpaces();
     char* start = str;
     if (isalpha(*str) || *str == '_' || *str == '\\' || *str == '{' || *str == '}') {
         str++;
@@ -169,6 +196,12 @@ Tree<MathObject> *Parser::getId() {
 
 size_t Parser::getVariablesCount() {
     return variables_count;
+}
+
+inline void Parser::skipSpaces() {
+    while (isspace(*str)) {
+        str++;
+    }
 }
 
 #endif //DIFFERENTIATOR_PARSER_H

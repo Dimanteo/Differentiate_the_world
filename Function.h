@@ -167,13 +167,63 @@ struct Sin : Function {
     }
 };
 
+struct Cos : Function {
+    Cos() {
+        token = strdup("cos");
+        priority = 2;
+    }
+    ~Cos() {
+        free(token);
+    }
+
+    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+        char* buffer = (char*)calloc(strlen(rightString) + 7, sizeof(buffer[0]));
+        sprintf(buffer, "\\cos(%s)", rightString);
+        return  buffer;
+    }
+
+    double calculate(Tree<MathObject> *node) override {
+        return cos(node->getChild(RIGHT_CHILD)->getValue().num);
+    }
+
+    void diff(Tree<MathObject> function, Tree<MathObject> derivative) override {
+
+    }
+};
+
+struct Log_e : Function {
+    Log_e() {
+        token = strdup("ln");
+        priority = 2;
+    }
+    ~Log_e() {
+        free(token);
+    }
+
+    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+        char* buffer = (char*)calloc(strlen(rightString) + 6, sizeof(buffer[0]));
+        sprintf(buffer, "\\ln(%s)", rightString);
+        return  buffer;
+    }
+
+    double calculate(Tree<MathObject> *node) override {
+        return log(node->getChild(RIGHT_CHILD)->getValue().num);
+    }
+
+    void diff(Tree<MathObject> function, Tree<MathObject> derivative) override {
+
+    }
+};
+
 Function* FUNCTIONS[] = {
         new Sum(),
         new Sub(),
         new Mul(),
         new Div(),
         new Pow(),
-        new Sin()
+        new Sin(),
+        new Cos(),
+        new Log_e()
 };
 
 const int NO_FUNCTION_CODE = -1;
