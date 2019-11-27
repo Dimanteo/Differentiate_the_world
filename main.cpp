@@ -5,14 +5,19 @@
 #include "Function.h"
 #include "Parser.h"
 
+
 class Differentiator {
 
 public:
+
     const static size_t VARIABLES_MAX_COUNT = 100;
-    char *variables[VARIABLES_MAX_COUNT];
+    //char *variables[VARIABLES_MAX_COUNT];
+    char** variables;
     size_t variables_count = 0;
+
     Tree<MathObject>* tree = nullptr;
 
+    Differentiator();
     ~Differentiator();
 
     void parse(FILE* in);
@@ -57,6 +62,8 @@ void Tree<MathObject>::valueDestruct() {
     value.type = MathObject::POISON_TYPE;
 }
 
+
+
 int main() {
     FILE* file = fopen("Input.txt", "rb");
     Differentiator* laba_killer = new Differentiator();
@@ -65,8 +72,19 @@ int main() {
     FILE* log = fopen("../Debug/Diff.txt", "wb");
     fclose(log);
     FILE* latex = fopen("../Debug/Diff.tex", "wb");
+    fclose(latex);
     laba_killer->dump("../Debug/Diff", OK_STATE, "call from main", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+    for (int i = 0; i < FUNCTIONS_COUNT; ++i) {
+        delete(FUNCTIONS[i]);
+    }
+    delete(laba_killer);
     return 0;
+}
+
+
+
+Differentiator::Differentiator() {
+    variables = (char**)calloc(VARIABLES_MAX_COUNT, sizeof(variables[0]));
 }
 
 Differentiator::~Differentiator() {
@@ -74,6 +92,7 @@ Differentiator::~Differentiator() {
     for (int i = 0; i < variables_count; ++i) {
         free(variables[i]);
     }
+    free(variables);
     variables_count = 0;
 }
 
@@ -81,7 +100,8 @@ void Differentiator::parse(FILE *in) {
     size_t buffer_size = 0;
     char* buffer = read_file_to_buffer_alloc(in, "rb", &buffer_size);
     Parser parser = Parser();
-    tree = parser.parseLine(buffer);
+    tree = parser.parseLine(buffer, variables);
+    variables_count = parser.getVariablesCount();
     free(buffer);
 }
 
@@ -165,12 +185,11 @@ char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
             break;
         }
         case MathObject::VARIABLE_TYPE: {
-            char var_string[MathObject::MAX_LENGTH] = "";
-            sprintf(var_string, "%s", variables[node->getValue().code]);
-            buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(var_string));
-            strcat(buffer, var_string);
+            buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(variables[node->getValue().code]));
+            strcat(buffer, variables[node->getValue().code]);
             break;
         }
     }
     return buffer;
 }
+
