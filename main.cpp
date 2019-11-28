@@ -11,9 +11,9 @@ class Differentiator {
 public:
 
     const static size_t VARIABLES_MAX_COUNT = 100;
-    //char *variables[VARIABLES_MAX_COUNT];
     char** variables;
     size_t variables_count = 0;
+    int diffVarCode = 0;
 
     Tree<MathObject>* tree = nullptr;
 
@@ -26,6 +26,11 @@ public:
 
     char * texDump(char *buffer, Tree<MathObject>* node);
 
+    Tree<MathObject>* diff(Tree<MathObject>* node);
+
+    void setDiffVar(const char* var);
+
+    Tree<MathObject> *getDiff(const char *diffVar);
 };
 
 template<>
@@ -62,18 +67,54 @@ void Tree<MathObject>::valueDestruct() {
     value.type = MathObject::POISON_TYPE;
 }
 
-
+template<>
+void Tree<MathObject>::genDot(Tree<MathObject> *node, FILE *file) {
+#ifndef NDEBUG
+    char color[8] = "";
+    switch (node->getValue().type) {
+        case MathObject::NUMBER_TYPE:
+            strcpy(color, "#55B1D2");
+            break;
+        case MathObject::OPERATION_TYPE:
+            strcpy(color, "#B1D255");
+            break;
+        case MathObject::VARIABLE_TYPE:
+            strcpy(color, "#D255B1");
+            break;
+        case MathObject::POISON_TYPE:
+            strcpy(color, "#FFFFFF");
+    }
+    fprintf(file, "T%p [shape = record, color = \"%s\", style =\"filled\", label = \" {value\\n", node, color);
+    node->valuePrint(file);
+    fprintf(file, " | this\\n%p | parent\\n%p  | {left\\n%p | right\\n%p}} \"];\n\t", node, node->getParent(), node->getChild(LEFT_CHILD), node->getChild(RIGHT_CHILD));
+    for (int i = 0; i < NUMBER_OF_CHILDREN; ++i) {
+        if (!node->childIsEmpty(i))
+            fprintf(file, "T%p -> T%p[label = \"%s\"];", node, node->getChild(i), i ? "Right" : "Left");
+    }
+    fprintf(file, "\n\t");
+#endif
+}
 
 int main() {
     FILE* file = fopen("Input.txt", "rb");
     Differentiator* laba_killer = new Differentiator();
     laba_killer->parse(file);
     fclose(file);
+
     FILE* log = fopen("../Debug/Diff.txt", "wb");
     fclose(log);
     FILE* latex = fopen("../Debug/Diff.tex", "wb");
     fclose(latex);
-    laba_killer->dump("../Debug/Diff", OK_STATE, "call from main", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+    laba_killer->dump("../Debug/Diff", OK_STATE, "SOURCE", __FILE__, __FUNCTION__, __LINE__);
+
+    laba_killer->getDiff("x");
+
+    log = fopen("../Debug/Diff_Result.txt", "wb");
+    fclose(log);
+    latex = fopen("../Debug/Diff_Result.tex", "wb");
+    fclose(latex);
+    laba_killer->dump("../Debug/Diff_Result", OK_STATE, "RESULT", __FILE__, __FUNCTION__, __LINE__);
+
     for (int i = 0; i < FUNCTIONS_COUNT; ++i) {
         delete(FUNCTIONS[i]);
     }
@@ -153,11 +194,13 @@ void Differentiator::dump(const char outFileName[], const char state[], const ch
 }
 
 char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
+    assert(node);
     switch (node->getValue().type) {
         case MathObject::NUMBER_TYPE: {
             char num_string[MathObject::MAX_LENGTH] = "";
             sprintf(num_string, "%g", node->getValue().num);
-            buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(num_string));
+            buffer = (char*)realloc(buffer, strlen(buffer) + strlen(num_string) + 1);
+            assert(buffer);
             strcat(buffer, num_string);
             break;
         }
@@ -172,12 +215,12 @@ char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
             }
             char *output = FUNCTIONS[node->getValue().code]->texPrint(node, leftString, rightString);
             if (!node->isRoot() && !node->getParent()->childIsEmpty(LEFT_CHILD) && FUNCTIONS[node->getValue().code]->priority < FUNCTIONS[node->getParent()->getValue().code]->priority) {
-                buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(output) + 2);
+                buffer = (char*)realloc(buffer, strlen(buffer) + strlen(output) + 3);
                 strcat(buffer, "(");
                 strcat(buffer, output);
                 strcat(buffer, ")");
             } else {
-                buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(output));
+                buffer = (char*)realloc(buffer, strlen(buffer) + strlen(output) + 1);
                 strcat(buffer, output);
             }
             free(output);
@@ -186,7 +229,7 @@ char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
             break;
         }
         case MathObject::VARIABLE_TYPE: {
-            buffer = (char*)realloc(buffer, sizeof(buffer) + strlen(variables[node->getValue().code]));
+            buffer = (char*)realloc(buffer, strlen(buffer) + strlen(variables[node->getValue().code]) + 1);
             strcat(buffer, variables[node->getValue().code]);
             break;
         }
@@ -194,3 +237,113 @@ char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
     return buffer;
 }
 
+void Differentiator::setDiffVar(const char *var) {
+    for (int i = 0; i < variables_count; ++i) {
+        if (strcmp(variables[i], var) == 0) {
+            diffVarCode = i;
+            break;
+        }
+    }
+}
+
+Tree<MathObject> *Differentiator::getDiff(const char *diffVar) {
+    setDiffVar(diffVar);
+    Tree<MathObject>* diffTree = diff(tree);
+    delete(tree);
+    tree = diffTree;
+}
+
+Tree<MathObject>* copySubtree(Tree<MathObject>* node) {
+    Tree<MathObject>* newNode = new Tree<MathObject>(node->getValue());
+    if (!node->childIsEmpty(LEFT_CHILD)) {
+        newNode->connectSubtree(LEFT_CHILD, copySubtree(node->getChild(LEFT_CHILD)));
+    }
+    if (!node->childIsEmpty(RIGHT_CHILD)) {
+        newNode->connectSubtree(RIGHT_CHILD, copySubtree(node->getChild(RIGHT_CHILD)));
+    }
+    return newNode;
+}
+
+//DSL
+#define dL diff(node->getChild(LEFT_CHILD))
+#define dR diff(node->getChild(RIGHT_CHILD))
+#define L copySubtree(node->getChild(LEFT_CHILD))
+#define R copySubtree(node->getChild(RIGHT_CHILD))
+#define it_is(tok) strcmp(FUNCTIONS[node->getValue().code]->token, #tok) == 0
+#define newOperation(op) new Tree<MathObject>(MathObject(MathObject::OPERATION_TYPE, getFunctionCode(#op)))
+
+#define overrideBinaryOperator(op) Tree<MathObject>* operator op (Tree<MathObject>& l, Tree<MathObject>& r) {\
+                                        Tree<MathObject>* res = newOperation(op);\
+                                        res->connectSubtree(LEFT_CHILD , &l);\
+                                        res->connectSubtree(RIGHT_CHILD, &r);\
+                                        return res;\
+                                    }
+
+overrideBinaryOperator(+)
+
+overrideBinaryOperator(-)
+
+overrideBinaryOperator(*)
+
+overrideBinaryOperator(/)
+
+overrideBinaryOperator(^)
+
+#define overrideOperatorNumRight(op) Tree<MathObject>* operator op (Tree<MathObject>& l, double num) {\
+                                        Tree<MathObject>* res = newOperation(op);\
+                                        res->connectSubtree(LEFT_CHILD , &l);\
+                                        res->connectSubtree(RIGHT_CHILD, new Tree<MathObject>(MathObject(num)));\
+                                        return res;\
+                                    }
+
+overrideOperatorNumRight(^)
+overrideOperatorNumRight(*)
+
+Tree<MathObject>* Differentiator::diff(Tree<MathObject>* node) {
+    switch (node->getValue().type) {
+        case MathObject::NUMBER_TYPE: {
+            return new Tree<MathObject>(MathObject(0));
+        }
+        case MathObject::VARIABLE_TYPE: {
+            if (node->getValue().code == diffVarCode) {
+                return new Tree<MathObject>(MathObject(1));
+            } else {
+                return new Tree<MathObject>(MathObject(0));
+            }
+        }
+        case MathObject::OPERATION_TYPE: {
+            if (it_is(+)) {
+                return *dL + *dR;
+            }
+            if (it_is(-)) {
+                return *dL - *dR;
+            }
+            if (it_is(*)) {
+                return *(*dL * *R) + *(*L * *dR);
+            }
+            if (it_is(/)) {
+                return *(*(*dL * *R) - *(*L * *dR)) / *(*R ^ 2);
+            }
+            if (it_is(sin)) {
+                Tree<MathObject>* res = newOperation(cos);
+                res->connectSubtree(RIGHT_CHILD, copySubtree(node->getChild(RIGHT_CHILD)));
+                return *res * *dR;
+            }
+            if (it_is(cos)) {
+                Tree<MathObject>* res = newOperation(sin);
+                res->connectSubtree(RIGHT_CHILD, copySubtree(node->getChild(RIGHT_CHILD)));
+                return *(*res * (-1)) * *dR;
+            }
+            break;
+        }
+    }
+}
+
+#undef dL
+#undef dR
+#undef L
+#undef R
+#undef overrideOperatorNumRight
+#undef overrideBinaryOperator
+#undef it_is
+#undef newOperation

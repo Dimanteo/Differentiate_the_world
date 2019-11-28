@@ -154,7 +154,6 @@ Tree<MathObject> *Parser::getFun() {
     if (code == -1 || *str != '(') {
         str = start;
         Tree<MathObject>* val = getId();
-        free(name);
         return val;
     }
     str++;
@@ -188,7 +187,8 @@ Tree<MathObject> *Parser::getId() {
         }
     }
     if (code == variables_count) {
-        variables[variables_count++] = name;
+        variables[code] = name;
+        variables_count++;
     }
     Tree<MathObject>* val = new Tree<MathObject>(MathObject(MathObject::VARIABLE_TYPE, code));
     return val;

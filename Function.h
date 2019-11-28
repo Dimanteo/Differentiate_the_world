@@ -14,13 +14,11 @@ struct Function {
     virtual ~Function() {}
     virtual char* texPrint(Tree<MathObject>* node, char* leftString, char* rightString) = 0;
     virtual double calculate(Tree<MathObject>* node) = 0;
-    virtual void diff(Tree<MathObject> function, Tree<MathObject> derivative) = 0;
 };
 
 
 //+ summation
 struct Sum : public Function {
-
     Sum() {
         token = strdup("+");
         priority = 0;
@@ -37,10 +35,6 @@ struct Sum : public Function {
 
     double calculate(Tree<MathObject> *node) override {
         return node->getChild(LEFT_CHILD)->getValue().num + node->getChild(RIGHT_CHILD)->getValue().num;
-    }
-
-    void diff(Tree<MathObject> function, Tree<MathObject> derivative) override {
-
     }
 };
 
@@ -63,10 +57,6 @@ struct Sub : public Function {
     double calculate(Tree<MathObject> *node) override {
         return node->getChild(LEFT_CHILD)->getValue().num - node->getChild(RIGHT_CHILD)->getValue().num;
     }
-
-    void diff(Tree<MathObject> function, Tree<MathObject> derivative) override {
-
-    }
 };
 
 //* multiplication
@@ -87,10 +77,6 @@ struct Mul : public Function {
 
     double calculate(Tree<MathObject> *node) override {
         return node->getChild(LEFT_CHILD)->getValue().num * node->getChild(RIGHT_CHILD)->getValue().num;
-    }
-
-    void diff(Tree<MathObject> function, Tree<MathObject> derivative) override {
-
     }
 };
 
@@ -113,10 +99,6 @@ struct Div : Function {
     double calculate(Tree<MathObject> *node) override {
         return node->getChild(LEFT_CHILD)->getValue().num / node->getChild(RIGHT_CHILD)->getValue().num;
     }
-
-    void diff(Tree<MathObject> function, Tree<MathObject> derivative) override {
-
-    }
 };
 
 struct Pow : Function {
@@ -136,10 +118,6 @@ struct Pow : Function {
 
     double calculate(Tree<MathObject> *node) override {
         return pow(node->getChild(LEFT_CHILD)->getValue().num, node->getChild(RIGHT_CHILD)->getValue().num);
-    }
-
-    void diff(Tree<MathObject> function, Tree<MathObject> derivative) override {
-
     }
 };
 
@@ -161,10 +139,6 @@ struct Sin : Function {
     double calculate(Tree<MathObject> *node) override {
         return sin(node->getChild(RIGHT_CHILD)->getValue().num);
     }
-
-    void diff(Tree<MathObject> function, Tree<MathObject> derivative) override {
-
-    }
 };
 
 struct Cos : Function {
@@ -185,10 +159,6 @@ struct Cos : Function {
     double calculate(Tree<MathObject> *node) override {
         return cos(node->getChild(RIGHT_CHILD)->getValue().num);
     }
-
-    void diff(Tree<MathObject> function, Tree<MathObject> derivative) override {
-
-    }
 };
 
 struct Log_e : Function {
@@ -208,10 +178,6 @@ struct Log_e : Function {
 
     double calculate(Tree<MathObject> *node) override {
         return log(node->getChild(RIGHT_CHILD)->getValue().num);
-    }
-
-    void diff(Tree<MathObject> function, Tree<MathObject> derivative) override {
-
     }
 };
 
