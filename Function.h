@@ -70,7 +70,7 @@ struct Mul : public Function {
     }
 
     char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
-        char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 5 + 1, sizeof(buffer[0]));
+        char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 8 + 1, sizeof(buffer[0]));
         sprintf(buffer, "%s \\cdot %s", leftString, rightString);
         return buffer;
     }
@@ -193,7 +193,7 @@ Function* FUNCTIONS[] = {
 };
 
 const int NO_FUNCTION_CODE = -1;
-const size_t FUNCTIONS_COUNT = sizeof(FUNCTIONS) / sizeof(Function*);
+const size_t FUNCTIONS_COUNT = sizeof(FUNCTIONS) / sizeof(FUNCTIONS[0]);
 
 int getFunctionCode(const char* str) {
     for (int i = 0; i < FUNCTIONS_COUNT; ++i) {

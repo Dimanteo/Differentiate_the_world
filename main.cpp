@@ -95,6 +95,8 @@ void Tree<MathObject>::genDot(Tree<MathObject> *node, FILE *file) {
 #endif
 }
 
+
+
 int main() {
     FILE* file = fopen("Input.txt", "rb");
     Differentiator* laba_killer = new Differentiator();
@@ -118,6 +120,7 @@ int main() {
     for (int i = 0; i < FUNCTIONS_COUNT; ++i) {
         delete(FUNCTIONS[i]);
     }
+
     delete(laba_killer);
     return 0;
 }

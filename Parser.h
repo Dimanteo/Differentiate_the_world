@@ -151,7 +151,7 @@ Tree<MathObject> *Parser::getFun() {
     int code = getFunctionCode(name);
     free(name);
     skipSpaces();
-    if (code == -1 || *str != '(') {
+    if (code == NO_FUNCTION_CODE || *str != '(') {
         str = start;
         Tree<MathObject>* val = getId();
         return val;
