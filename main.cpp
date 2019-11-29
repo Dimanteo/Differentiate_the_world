@@ -5,6 +5,7 @@
 #include "Function.h"
 #include "Parser.h"
 
+#define DIFF_GRAPH
 
 class Differentiator {
 
@@ -30,7 +31,7 @@ public:
 
     void setDiffVar(const char* var);
 
-    Tree<MathObject> *getDiff(const char *diffVar);
+    Tree<MathObject> *getDiff(const char *diffVar, const char *filename, int order);
 
     Tree<MathObject>* copySubtree(Tree<MathObject>* node);
 
@@ -116,17 +117,8 @@ int main() {
 
     FILE* log = fopen("../Debug/Diff.txt", "wb");
     fclose(log);
-    FILE* latex = fopen("../Debug/Diff.tex", "wb");
-    fclose(latex);
-    laba_killer->dump("../Debug/Diff", OK_STATE, "SOURCE", __FILE__, __FUNCTION__, __LINE__);
 
-    laba_killer->getDiff("x");
-
-    log = fopen("../Debug/Diff_Result.txt", "wb");
-    fclose(log);
-    latex = fopen("../Debug/Diff_Result.tex", "wb");
-    fclose(latex);
-    laba_killer->dump("../Debug/Diff_Result", OK_STATE, "RESULT", __FILE__, __FUNCTION__, __LINE__);
+    laba_killer->getDiff("x", "../Debug/LATEX.tex", 2);
 
     for (int i = 0; i < FUNCTIONS_COUNT; ++i) {
         delete(FUNCTIONS[i]);
@@ -162,13 +154,10 @@ void Differentiator::parse(FILE *in) {
 }
 
 void Differentiator::dump(const char outFileName[], const char state[], const char message[], const char file[], const char function[], int line) {
+#ifndef NDEBUG
     Tree<MathObject>** seq = tree->allocTree();
     tree->inorder(seq);
-    size_t outFileLength = strlen(outFileName);
-    char* extensionName = (char*)calloc(outFileLength + 5, sizeof(extensionName[0]));
-    strcpy(extensionName, outFileName);
-    strcat(extensionName, ".txt");
-    FILE* log = fopen(extensionName, "ab");
+    FILE* log = fopen(outFileName, "ab");
 
     fprintf(log, "\nBEGIN <Differentiator dump>\n{\n"
                  "\tVariables list\n"
@@ -179,32 +168,9 @@ void Differentiator::dump(const char outFileName[], const char state[], const ch
     fprintf(log, "\t}\n");
     tree->treeDump(log, state, message,file, function, line, seq);
     fprintf(log, "END </Differentiator dump>\n");
+
     fclose(log);
-
-    extensionName[outFileLength] = '\0';
-    strcat(extensionName, ".png");
-    tree->graphDump(extensionName, seq);
-
-    extensionName[outFileLength] = '\0';
-    strcat(extensionName, ".tex");
-    char* buffer = (char*)calloc(1, sizeof(buffer[0]));
-    buffer = texDump(buffer, tree);
-    FILE* latex = fopen(extensionName, "ab");
-    fprintf(latex, "\\documentclass[a4paper,12pt]{article}\n"
-                   "\\usepackage[T2A]{fontenc}\n"
-                   "\\usepackage[utf8]{inputenc}\n"
-                   "\\usepackage[english,russian]{babel}\n"
-                   "\\usepackage{amsmath,amsfonts,amssymb,amsthm,mathtools} \n"
-                   "\\usepackage{float}\n"
-                   "\\usepackage{wasysym}\n"
-                   "\\begin{document}\n");
-    fprintf(latex, "\\begin{equation}\n");
-    fwrite(buffer, sizeof(buffer[0]), strlen(buffer), latex);
-    fprintf(latex, "\n\\end{equation}\n"
-                   "\\end{document}");
-    fclose(latex);
-
-    free(extensionName);
+#endif
 }
 
 char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
@@ -214,7 +180,6 @@ char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
             char num_string[MathObject::MAX_LENGTH] = "";
             sprintf(num_string, "%g", node->getValue().num);
             buffer = (char*)realloc(buffer, strlen(buffer) + strlen(num_string) + 1);
-            assert(buffer);
             strcat(buffer, num_string);
             break;
         }
@@ -260,11 +225,56 @@ void Differentiator::setDiffVar(const char *var) {
     }
 }
 
-Tree<MathObject> *Differentiator::getDiff(const char *diffVar) {
+Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filename, int order) {
     setDiffVar(diffVar);
-    Tree<MathObject>* diffTree = diff(tree);
-    delete(tree);
-    tree = diffTree;
+    FILE* latex = fopen(filename, "wb");
+    fprintf(latex, "\\documentclass[a4paper,12pt]{article}\n"
+                   "\\usepackage[T2A]{fontenc}\n"
+                   "\\usepackage[utf8]{inputenc}\n"
+                   "\\usepackage[english,russian]{babel}\n"
+                   "\\usepackage{amsmath,amsfonts,amssymb,amsthm,mathtools} \n"
+                   "\\usepackage{float}\n"
+                   "\\usepackage{wasysym}\n"
+                   "\\begin{document}\n");
+
+    fprintf(latex, "$$");
+    char* equation = (char*)calloc(1, sizeof(equation[0]));
+    equation = texDump(equation, tree);
+    fwrite(equation, sizeof(equation[0]), strlen(equation), latex);
+    free(equation);
+    fprintf(latex, "$$\n");
+#ifdef DIFF_GRAPH
+    Tree<MathObject>** sequence = tree->allocTree();
+    tree->inorder(sequence);
+    char graph[20] = "";
+    sprintf(graph, "../Debug/Diff[0].png");
+    tree->graphDump(graph, sequence);
+    free(sequence);
+#endif
+    dump("../Debug/Diff.txt", OK_STATE, "call from getDiff()", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+    for (int i = 0; i < order; ++i) {
+        Tree<MathObject>* diffTree = diff(tree);
+        delete(tree);
+        tree = diffTree;
+
+        fprintf(latex, "\\begin{equation}\n");
+        char* buffer = (char*)calloc(1, sizeof(buffer[0]));
+        buffer = texDump(buffer, tree);
+        fwrite(buffer, sizeof(buffer[0]), strlen(buffer), latex);
+        free(buffer);
+        fprintf(latex, "\n\\end{equation}\n");
+#ifdef DIFF_GRAPH
+        char graphFileName[20] = "";
+        sprintf(graphFileName, "../Debug/Diff[%d].png", i + 1);
+        Tree<MathObject>** seq = tree->allocTree();
+        tree->inorder(seq);
+        tree->graphDump(graphFileName, seq);
+        free(seq);
+#endif
+    }
+
+    fprintf(latex, "\\end{document}");
+    fclose(latex);
 }
 
 Tree<MathObject>* Differentiator::copySubtree(Tree<MathObject>* node) {
@@ -391,6 +401,9 @@ Tree<MathObject>* Differentiator::diff(Tree<MathObject>* node) {
                 }
                 //if (!baseIsVar && !powerIsVar)
                 return new Tree<MathObject>(MathObject(0));
+            }
+            if (it_is(ln)) {
+                return *(1 / *R) * *dR;
             }
             break;
         }

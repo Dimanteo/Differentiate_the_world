@@ -111,8 +111,8 @@ struct Pow : Function {
     }
 
     char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
-        char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 4, sizeof(buffer[0]));
-        sprintf(buffer, "%s^{%s}", leftString, rightString);
+        char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 6, sizeof(buffer[0]));
+        sprintf(buffer, "{%s}^{%s}", leftString, rightString);
         return buffer;
     }
 
