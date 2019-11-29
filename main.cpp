@@ -31,6 +31,17 @@ public:
     void setDiffVar(const char* var);
 
     Tree<MathObject> *getDiff(const char *diffVar);
+
+    Tree<MathObject>* copySubtree(Tree<MathObject>* node);
+
+    bool isVariable(Tree<MathObject>* node);
+
+//DSL functions. Defined in #define overrideUnaryOperator
+    Tree<MathObject>* cos (Tree<MathObject>* node);
+
+    Tree<MathObject>* sin (Tree<MathObject>* node);
+
+    Tree<MathObject>* ln (Tree<MathObject>* node);
 };
 
 template<>
@@ -256,7 +267,7 @@ Tree<MathObject> *Differentiator::getDiff(const char *diffVar) {
     tree = diffTree;
 }
 
-Tree<MathObject>* copySubtree(Tree<MathObject>* node) {
+Tree<MathObject>* Differentiator::copySubtree(Tree<MathObject>* node) {
     Tree<MathObject>* newNode = new Tree<MathObject>(node->getValue());
     if (!node->childIsEmpty(LEFT_CHILD)) {
         newNode->connectSubtree(LEFT_CHILD, copySubtree(node->getChild(LEFT_CHILD)));
@@ -265,6 +276,19 @@ Tree<MathObject>* copySubtree(Tree<MathObject>* node) {
         newNode->connectSubtree(RIGHT_CHILD, copySubtree(node->getChild(RIGHT_CHILD)));
     }
     return newNode;
+}
+
+bool Differentiator::isVariable(Tree<MathObject> *node) {
+    if (node->getValue().type == MathObject::VARIABLE_TYPE && node->getValue().code == diffVarCode) {
+        return true;
+    }
+    if (!node->childIsEmpty(LEFT_CHILD)) {
+        return isVariable(node->getChild(LEFT_CHILD));
+    }
+    if (!node->childIsEmpty(RIGHT_CHILD)) {
+        return isVariable(node->getChild(RIGHT_CHILD));
+    }
+    return false;
 }
 
 //DSL
@@ -280,6 +304,18 @@ Tree<MathObject>* copySubtree(Tree<MathObject>* node) {
                                         res->connectSubtree(LEFT_CHILD , &l);\
                                         res->connectSubtree(RIGHT_CHILD, &r);\
                                         return res;\
+                                    }\
+                                    Tree<MathObject>* operator op (Tree<MathObject>& l, double num) {\
+                                        Tree<MathObject>* res = newOperation(op);\
+                                        res->connectSubtree(LEFT_CHILD , &l);\
+                                        res->connectSubtree(RIGHT_CHILD, new Tree<MathObject>(MathObject(num)));\
+                                        return res;\
+                                    }\
+                                    Tree<MathObject>* operator op (double num, Tree<MathObject>& r) {\
+                                        Tree<MathObject>* res = newOperation(op);\
+                                        res->connectSubtree(RIGHT_CHILD , &r);\
+                                        res->connectSubtree(LEFT_CHILD, new Tree<MathObject>(MathObject(num)));\
+                                        return res;\
                                     }
 
 overrideBinaryOperator(+)
@@ -292,15 +328,17 @@ overrideBinaryOperator(/)
 
 overrideBinaryOperator(^)
 
-#define overrideOperatorNumRight(op) Tree<MathObject>* operator op (Tree<MathObject>& l, double num) {\
-                                        Tree<MathObject>* res = newOperation(op);\
-                                        res->connectSubtree(LEFT_CHILD , &l);\
-                                        res->connectSubtree(RIGHT_CHILD, new Tree<MathObject>(MathObject(num)));\
-                                        return res;\
-                                    }
+#define overrideUnaryOperator(op) Tree<MathObject>* Differentiator::op (Tree<MathObject>* node) {\
+                                      Tree<MathObject>* res = newOperation(op);\
+                                      res->connectSubtree(RIGHT_CHILD, node);\
+                                      return res;\
+                                  }
 
-overrideOperatorNumRight(^)
-overrideOperatorNumRight(*)
+overrideUnaryOperator(cos)
+
+overrideUnaryOperator(sin)
+
+overrideUnaryOperator(ln)
 
 Tree<MathObject>* Differentiator::diff(Tree<MathObject>* node) {
     switch (node->getValue().type) {
@@ -328,14 +366,31 @@ Tree<MathObject>* Differentiator::diff(Tree<MathObject>* node) {
                 return *(*(*dL * *R) - *(*L * *dR)) / *(*R ^ 2);
             }
             if (it_is(sin)) {
-                Tree<MathObject>* res = newOperation(cos);
-                res->connectSubtree(RIGHT_CHILD, copySubtree(node->getChild(RIGHT_CHILD)));
-                return *res * *dR;
+                return *cos(R) * *dR;
             }
             if (it_is(cos)) {
-                Tree<MathObject>* res = newOperation(sin);
-                res->connectSubtree(RIGHT_CHILD, copySubtree(node->getChild(RIGHT_CHILD)));
-                return *(*res * (-1)) * *dR;
+                return *(*sin(R) * (-1)) * *dR;
+            }
+            if (it_is(tg)) {
+                return *(1 / *(*cos(R) ^ 2)) * *dR;
+            }
+            if (it_is(ctg)) {
+                return -1 * *(1 / *(*sin(R) ^ 2));
+            }
+            if (it_is(^)) { //L^R
+                bool baseIsVar  = isVariable(node->getChild(LEFT_CHILD));
+                bool powerIsVar = isVariable(node->getChild(RIGHT_CHILD));
+                if (baseIsVar && powerIsVar) {
+                    return *(*L ^ *(*R - 1)) * *(*(*R * *dL) + *(*(*L * *ln(L) )* *dR));
+                }
+                if (baseIsVar) {
+                    return *(*R * *(*L ^ *(*R - 1))) * *dL;
+                }
+                if (powerIsVar) {
+                    return *(*(*L ^ *R) * *ln(L)) * *dR;
+                }
+                //if (!baseIsVar && !powerIsVar)
+                return new Tree<MathObject>(MathObject(0));
             }
             break;
         }
@@ -346,7 +401,7 @@ Tree<MathObject>* Differentiator::diff(Tree<MathObject>* node) {
 #undef dR
 #undef L
 #undef R
-#undef overrideOperatorNumRight
 #undef overrideBinaryOperator
+#undef overrideUnaryOperator
 #undef it_is
 #undef newOperation

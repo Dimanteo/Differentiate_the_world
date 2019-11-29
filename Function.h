@@ -161,6 +161,46 @@ struct Cos : Function {
     }
 };
 
+struct Tan : Function {
+    Tan() {
+        token = strdup("tg");
+        priority = 2;
+    }
+    ~Tan() {
+        free(token);
+    }
+
+    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+        char* buffer = (char*)calloc(strlen(rightString) + 6 + 1, sizeof(buffer[0]));
+        sprintf(buffer, "\\tan(%s)", rightString);
+        return buffer;
+    }
+
+    double calculate(Tree<MathObject> *node) override {
+        return tan(node->getValue().num);
+    }
+};
+
+struct Ctg : Function {
+    Ctg() {
+        token = strdup("ctg");
+        priority = 2;
+    }
+    ~Ctg() {
+        free(token);
+    }
+
+    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+        char* buffer = (char*)calloc(strlen(rightString) + 6 + 1, sizeof(buffer[0]));
+        sprintf(buffer, "\\ctg(%s)", rightString);
+        return buffer;
+    }
+
+    double calculate(Tree<MathObject> *node) override {
+        return cos(node->getValue().num) / sin(node->getValue().num);
+    }
+};
+
 struct Log_e : Function {
     Log_e() {
         token = strdup("ln");
@@ -189,7 +229,9 @@ Function* FUNCTIONS[] = {
         new Pow(),
         new Sin(),
         new Cos(),
-        new Log_e()
+        new Log_e(),
+        new Tan(),
+        new Ctg()
 };
 
 const int NO_FUNCTION_CODE = -1;
