@@ -16,6 +16,8 @@ struct Function {
     virtual double calculate(Tree<MathObject>* node) = 0;
 };
 
+#define LEFT_IS_NUMBER node->getChild(LEFT_CHILD)->getValue().type == MathObject::NUMBER_TYPE
+#define RIGHT_IS_NUMBER node->getChild(RIGHT_CHILD)->getValue().type == MathObject::NUMBER_TYPE
 
 //+ summation
 struct Sum : public Function {
@@ -34,7 +36,10 @@ struct Sum : public Function {
     }
 
     double calculate(Tree<MathObject> *node) override {
-        return node->getChild(LEFT_CHILD)->getValue().num + node->getChild(RIGHT_CHILD)->getValue().num;
+        if (LEFT_IS_NUMBER && RIGHT_IS_NUMBER)
+            return node->getChild(LEFT_CHILD)->getValue().num + node->getChild(RIGHT_CHILD)->getValue().num;
+        else
+            return NAN;
     }
 };
 
@@ -55,7 +60,10 @@ struct Sub : public Function {
     }
 
     double calculate(Tree<MathObject> *node) override {
-        return node->getChild(LEFT_CHILD)->getValue().num - node->getChild(RIGHT_CHILD)->getValue().num;
+        if (LEFT_IS_NUMBER && RIGHT_IS_NUMBER)
+            return node->getChild(LEFT_CHILD)->getValue().num - node->getChild(RIGHT_CHILD)->getValue().num;
+        else
+            return NAN;
     }
 };
 
@@ -76,7 +84,10 @@ struct Mul : public Function {
     }
 
     double calculate(Tree<MathObject> *node) override {
-        return node->getChild(LEFT_CHILD)->getValue().num * node->getChild(RIGHT_CHILD)->getValue().num;
+        if (LEFT_IS_NUMBER && RIGHT_IS_NUMBER)
+            return node->getChild(LEFT_CHILD)->getValue().num * node->getChild(RIGHT_CHILD)->getValue().num;
+        else
+            return NAN;
     }
 };
 
@@ -97,7 +108,10 @@ struct Div : Function {
     }
 
     double calculate(Tree<MathObject> *node) override {
-        return node->getChild(LEFT_CHILD)->getValue().num / node->getChild(RIGHT_CHILD)->getValue().num;
+        if (LEFT_IS_NUMBER && RIGHT_IS_NUMBER)
+            return node->getChild(LEFT_CHILD)->getValue().num / node->getChild(RIGHT_CHILD)->getValue().num;
+        else
+            return NAN;
     }
 };
 
@@ -117,7 +131,10 @@ struct Pow : Function {
     }
 
     double calculate(Tree<MathObject> *node) override {
-        return pow(node->getChild(LEFT_CHILD)->getValue().num, node->getChild(RIGHT_CHILD)->getValue().num);
+        if (LEFT_IS_NUMBER && RIGHT_IS_NUMBER)
+            return pow(node->getChild(LEFT_CHILD)->getValue().num, node->getChild(RIGHT_CHILD)->getValue().num);
+        else
+            return NAN;
     }
 };
 
@@ -137,7 +154,10 @@ struct Sin : Function {
     }
 
     double calculate(Tree<MathObject> *node) override {
-        return sin(node->getChild(RIGHT_CHILD)->getValue().num);
+        if (RIGHT_IS_NUMBER)
+            return sin(node->getChild(RIGHT_CHILD)->getValue().num);
+        else
+            return NAN;
     }
 };
 
@@ -157,7 +177,10 @@ struct Cos : Function {
     }
 
     double calculate(Tree<MathObject> *node) override {
-        return cos(node->getChild(RIGHT_CHILD)->getValue().num);
+        if (RIGHT_IS_NUMBER)
+            return cos(node->getChild(RIGHT_CHILD)->getValue().num);
+        else
+            return NAN;
     }
 };
 
@@ -177,7 +200,10 @@ struct Tan : Function {
     }
 
     double calculate(Tree<MathObject> *node) override {
-        return tan(node->getValue().num);
+        if (RIGHT_IS_NUMBER)
+            return tan(node->getChild(RIGHT_CHILD)->getValue().num);
+        else
+            return NAN;
     }
 };
 
@@ -197,7 +223,10 @@ struct Ctg : Function {
     }
 
     double calculate(Tree<MathObject> *node) override {
-        return cos(node->getValue().num) / sin(node->getValue().num);
+        if (RIGHT_IS_NUMBER)
+            return cos(node->getChild(RIGHT_CHILD)->getValue().num) / sin(node->getChild(RIGHT_CHILD)->getValue().num);
+        else
+            return NAN;
     }
 };
 
@@ -217,7 +246,10 @@ struct Log_e : Function {
     }
 
     double calculate(Tree<MathObject> *node) override {
-        return log(node->getChild(RIGHT_CHILD)->getValue().num);
+        if (RIGHT_IS_NUMBER)
+            return log(node->getChild(RIGHT_CHILD)->getValue().num);
+        else
+            return NAN;
     }
 };
 
@@ -245,5 +277,8 @@ int getFunctionCode(const char* str) {
     }
     return NO_FUNCTION_CODE;
 }
+
+#undef LEFT_IS_NUMBER
+#undef RIGHT_IS_NUMBER
 
 #endif //DIFFERENTIATOR_FUNCTION_H

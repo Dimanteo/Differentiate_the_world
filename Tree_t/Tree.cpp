@@ -105,6 +105,7 @@ void Tree<T>::removeSubTree(size_t index) {
     setChild(index, (Tree<T>*)NIL);
     treeVerify(VERIFY_CONTEXT);
 }
+
 template <class T>
 Tree<T>* Tree<T>::getParent(){
     return parent;
