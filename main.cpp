@@ -36,13 +36,15 @@ public:
 
     Tree<MathObject>* copySubtree(Tree<MathObject>* node);
 
+    void replaceBy(size_t child, Tree<MathObject>* node);
+
     bool isVariable(Tree<MathObject>* node);
 
     bool optimizationZero(Tree<MathObject> *node);
 
-    bool optimOne(Tree<MathObject> *node);
+    bool optimizationOne(Tree<MathObject> *node);
 
-    bool optimCalculation(Tree<MathObject> *node);
+    bool optimizationCalculate(Tree<MathObject> *node);
 
     void optimization();
 
@@ -201,7 +203,7 @@ char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
             if (!node->childIsEmpty(RIGHT_CHILD)) {
                 rightString = texDump(rightString, node->getChild(RIGHT_CHILD));
             }
-            char *output = FUNCTIONS[node->getValue().code]->texPrint(node, leftString, rightString);
+            char *output = FUNCTIONS[node->getValue().code]->texPrint(leftString, rightString);
             if (!node->isRoot() && !node->getParent()->childIsEmpty(LEFT_CHILD) && FUNCTIONS[node->getValue().code]->priority < FUNCTIONS[node->getParent()->getValue().code]->priority) {
                 buffer = (char*)realloc(buffer, strlen(buffer) + strlen(output) + 3);
                 strcat(buffer, "(");
@@ -234,6 +236,18 @@ void Differentiator::setDiffVar(const char *var) {
     }
 }
 
+int counter = 0;
+
+void drawGraph(const char filename[], int number, Tree<MathObject>* tree) {
+    char Name[30] = "";
+    sprintf(Name, "%s[%d].png", filename, number);
+    Tree<MathObject>** sequ = tree->allocTree();
+    tree->inorder(sequ);
+    tree->graphDump(Name, sequ);
+    free(sequ);
+    counter++;
+}
+
 Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filename, int order) {
     setDiffVar(diffVar);
     FILE* latex = fopen(filename, "wb");
@@ -252,19 +266,17 @@ Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filen
     fwrite(equation, sizeof(equation[0]), strlen(equation), latex);
     free(equation);
     fprintf(latex, "$$\n");
+
 #ifdef DIFF_GRAPH
-    Tree<MathObject>** sequence = tree->allocTree();
-    tree->inorder(sequence);
-    char graph[20] = "";
-    sprintf(graph, "../Debug/Diff[0].png");
-    tree->graphDump(graph, sequence);
-    free(sequence);
+    drawGraph("../Debug/Diff", counter, tree);
 #endif
+
     dump("../Debug/Diff.txt", OK_STATE, "call from getDiff()", __FILE__, __PRETTY_FUNCTION__, __LINE__);
     for (int i = 0; i < order; ++i) {
         Tree<MathObject>* diffTree = diff(tree);
         delete(tree);
         tree = diffTree;
+
         optimization();
 
         fprintf(latex, "\\begin{equation}\n");
@@ -273,21 +285,17 @@ Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filen
         fwrite(buffer, sizeof(buffer[0]), strlen(buffer), latex);
         free(buffer);
         fprintf(latex, "\n\\end{equation}\n");
+
 #ifdef DIFF_GRAPH
-        char graphFileName[20] = "";
-        sprintf(graphFileName, "../Debug/Diff[%d].png", i + 1);
-        Tree<MathObject>** seq = tree->allocTree();
-        tree->inorder(seq);
-        tree->graphDump(graphFileName, seq);
-        free(seq);
+        drawGraph("../Debug/Diff", counter, tree);
 #endif
     }
-
     fprintf(latex, "\\end{document}");
     fclose(latex);
 }
 
 Tree<MathObject>* Differentiator::copySubtree(Tree<MathObject>* node) {
+    assert(node);
     Tree<MathObject>* newNode = new Tree<MathObject>(node->getValue());
     if (!node->childIsEmpty(LEFT_CHILD)) {
         newNode->connectSubtree(LEFT_CHILD, copySubtree(node->getChild(LEFT_CHILD)));
@@ -309,6 +317,25 @@ bool Differentiator::isVariable(Tree<MathObject> *node) {
         return isVariable(node->getChild(RIGHT_CHILD));
     }
     return false;
+}
+
+void Differentiator::replaceBy(size_t child, Tree<MathObject>* node) {
+    node->setValue(node->getChild(child)->getValue());
+    size_t not_child = (child == RIGHT_CHILD) ? LEFT_CHILD : RIGHT_CHILD;
+    Tree<MathObject>* subtreeCopy = nullptr;
+
+    node->removeSubTree(not_child);
+    if (!node->getChild(child)->childIsEmpty(not_child)) {
+        subtreeCopy = copySubtree(node->getChild(child)->getChild(not_child));
+        node->connectSubtree(not_child, subtreeCopy);
+    }
+    if (!node->getChild(child)->childIsEmpty(child)) {
+        subtreeCopy = copySubtree(node->getChild(child)->getChild(child));
+        node->removeSubTree(child);
+        node->connectSubtree(child, subtreeCopy);
+    } else {
+        node->removeSubTree(child);
+    }
 }
 
 //DSL
@@ -427,8 +454,11 @@ void Differentiator::optimization() {
         Tree<MathObject>** sequence = tree->allocTree();
         tree->postorder(sequence);
         for (int i = 0; i < tree->getSize(); ++i) {
-            modified = optimCalculation(sequence[i]);
-            modified = modified || optimizationZero(sequence[i]);
+            if (sequence[i]->getValue().type == MathObject::OPERATION_TYPE) {
+                modified = optimizationCalculate(sequence[i]);
+                modified = modified || optimizationZero(sequence[i]);
+                modified = modified || optimizationOne(sequence[i]);
+            }
         }
         free(sequence);
     }
@@ -436,56 +466,55 @@ void Differentiator::optimization() {
 
 #define LEFT_IS(arg)  node->getChild(LEFT_CHILD )->getValue().type == MathObject::NUMBER_TYPE && node->getChild(LEFT_CHILD )->getValue().num == arg
 #define RIGHT_IS(arg) node->getChild(RIGHT_CHILD)->getValue().type == MathObject::NUMBER_TYPE && node->getChild(RIGHT_CHILD)->getValue().num == arg
-#define removeChild(child)  node->setValue(node->getChild(child)->getValue());\
-                            Tree<MathObject>* newLeft  = copySubtree(node->getChild(child)->getChild(LEFT_CHILD ));\
-                            Tree<MathObject>* newRight = copySubtree(node->getChild(child)->getChild(RIGHT_CHILD));\
-                            node->removeSubTree(LEFT_CHILD );\
-                            node->removeSubTree(RIGHT_CHILD);\
-                            node->connectSubtree(LEFT_CHILD , newLeft );\
-                            node->connectSubtree(RIGHT_CHILD, newRight);
 
 bool Differentiator::optimizationZero(Tree<MathObject> *node) {
-    if (node->getValue().type == MathObject::OPERATION_TYPE) {
-        if (it_is(+)) {
-            if (LEFT_IS(0)) {
-                removeChild(RIGHT_CHILD)
-                return true;
-            } else if (RIGHT_IS(0)) {
-                removeChild(LEFT_CHILD)
-                return true;
-            }
+    if (it_is(+)) {
+        if (LEFT_IS(0)) {
+            replaceBy(RIGHT_CHILD, node);
+            return true;
+        } else if (RIGHT_IS(0)) {
+            replaceBy(LEFT_CHILD, node);
+            return true;
         }
-        if (it_is(*)) {
-            if ((LEFT_IS(0)) || (RIGHT_IS(0))) {
-                node->removeSubTree(LEFT_CHILD);
-                node->removeSubTree(RIGHT_CHILD);
-                node->setValue(MathObject(0));
-                return true;
-            }
+    }
+    if (it_is(*)) {
+        if ((LEFT_IS(0)) || (RIGHT_IS(0))) {
+            node->removeSubTree(LEFT_CHILD);
+            node->removeSubTree(RIGHT_CHILD);
+            node->setValue(MathObject(0));
+            return true;
         }
-        if (it_is(-)) {
-            if (RIGHT_IS(0)) {
-                removeChild(LEFT_CHILD)
-            }
-            //TODO LEFT_IS(0)
+    }
+    if (it_is(-)) {
+        if (RIGHT_IS(0)) {
+            replaceBy(LEFT_CHILD, node);
+        }
+        //TODO LEFT_IS(0)
+    }
+    return false;
+}
+
+bool Differentiator::optimizationOne(Tree<MathObject> *node) {
+    if (it_is(*)) {
+        if (RIGHT_IS(1)) {
+            replaceBy(LEFT_CHILD, node);
+            return true;
+        }
+        if (LEFT_IS(1)) {
+            replaceBy(RIGHT_CHILD, node);
+            return true;
         }
     }
     return false;
 }
 
-bool Differentiator::optimOne(Tree<MathObject> *node) {
-    return false;
-}
-
-bool Differentiator::optimCalculation(Tree<MathObject> *node) {
-    if (node->getValue().type == MathObject::OPERATION_TYPE) {
-        double value = FUNCTIONS[node->getValue().code]->calculate(node);
-        if (!isnan(value)) {
-            node->setValue(value);
-            node->removeSubTree(LEFT_CHILD);
-            node->removeSubTree(RIGHT_CHILD);
-            return true;
-        }
+bool Differentiator::optimizationCalculate(Tree<MathObject> *node) {
+    double value = FUNCTIONS[node->getValue().code]->calculate(node);
+    if (!isnan(value)) {
+        node->setValue(value);
+        node->removeSubTree(LEFT_CHILD);
+        node->removeSubTree(RIGHT_CHILD);
+        return true;
     }
     return false;
 }
@@ -498,3 +527,5 @@ bool Differentiator::optimCalculation(Tree<MathObject> *node) {
 #undef overrideUnaryOperator
 #undef it_is
 #undef newOperation
+#undef LEFT_IS
+#undef RIGHT_IS

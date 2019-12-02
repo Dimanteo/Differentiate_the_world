@@ -12,7 +12,7 @@ struct Function {
     int priority;
 
     virtual ~Function() {}
-    virtual char* texPrint(Tree<MathObject>* node, char* leftString, char* rightString) = 0;
+    virtual char* texPrint(char* leftString, char* rightString) = 0;
     virtual double calculate(Tree<MathObject>* node) = 0;
 };
 
@@ -29,7 +29,7 @@ struct Sum : public Function {
         free(token);
     }
 
-    char* texPrint(Tree<MathObject> *node, char* leftString, char* rightString) override {
+    char* texPrint(char* leftString, char* rightString) override {
         char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 2, sizeof(buffer[0]));
         sprintf(buffer, "%s+%s", leftString, rightString);
         return buffer;
@@ -53,7 +53,7 @@ struct Sub : public Function {
         free(token);
     }
 
-    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+    char *texPrint(char *leftString, char *rightString) override {
         char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 2, sizeof(buffer[0]));
         sprintf(buffer, "%s-%s", leftString, rightString);
         return buffer;
@@ -77,7 +77,7 @@ struct Mul : public Function {
         free(token);
     }
 
-    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+    char *texPrint(char *leftString, char *rightString) override {
         char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 8 + 1, sizeof(buffer[0]));
         sprintf(buffer, "%s \\cdot %s", leftString, rightString);
         return buffer;
@@ -101,7 +101,7 @@ struct Div : Function {
         free(token);
     }
 
-    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+    char *texPrint(char *leftString, char *rightString) override {
         char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 10 + 1, sizeof(buffer[0]));
         sprintf(buffer, "\\dfrac{%s}{%s}", leftString, rightString);
         return buffer;
@@ -124,7 +124,7 @@ struct Pow : Function {
         free(token);
     }
 
-    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+    char *texPrint(char *leftString, char *rightString) override {
         char* buffer = (char*)calloc(strlen(leftString) + strlen(rightString) + 6, sizeof(buffer[0]));
         sprintf(buffer, "{%s}^{%s}", leftString, rightString);
         return buffer;
@@ -147,7 +147,7 @@ struct Sin : Function {
         free(token);
     }
 
-    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+    char *texPrint(char *leftString, char *rightString) override {
         char* buffer = (char*)calloc(strlen(rightString) + 7, sizeof(buffer[0]));
         sprintf(buffer, "\\sin(%s)", rightString);
         return  buffer;
@@ -170,7 +170,7 @@ struct Cos : Function {
         free(token);
     }
 
-    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+    char *texPrint(char *leftString, char *rightString) override {
         char* buffer = (char*)calloc(strlen(rightString) + 7, sizeof(buffer[0]));
         sprintf(buffer, "\\cos(%s)", rightString);
         return  buffer;
@@ -193,7 +193,7 @@ struct Tan : Function {
         free(token);
     }
 
-    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+    char *texPrint(char *leftString, char *rightString) override {
         char* buffer = (char*)calloc(strlen(rightString) + 6 + 1, sizeof(buffer[0]));
         sprintf(buffer, "\\tan(%s)", rightString);
         return buffer;
@@ -216,7 +216,7 @@ struct Ctg : Function {
         free(token);
     }
 
-    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+    char *texPrint(char *leftString, char *rightString) override {
         char* buffer = (char*)calloc(strlen(rightString) + 6 + 1, sizeof(buffer[0]));
         sprintf(buffer, "\\ctg(%s)", rightString);
         return buffer;
@@ -239,7 +239,7 @@ struct Log_e : Function {
         free(token);
     }
 
-    char *texPrint(Tree<MathObject> *node, char *leftString, char *rightString) override {
+    char *texPrint(char *leftString, char *rightString) override {
         char* buffer = (char*)calloc(strlen(rightString) + 6, sizeof(buffer[0]));
         sprintf(buffer, "\\ln(%s)", rightString);
         return  buffer;
@@ -253,6 +253,26 @@ struct Log_e : Function {
     }
 };
 
+struct Minus : Function {
+    Minus (){
+        token = strdup("--");
+        priority = 2;
+    }
+    ~Minus() {
+        free(token);
+    }
+
+    char *texPrint(char *leftString, char *rightString) override {
+        char* buffer = (char*)calloc(strlen(rightString) + 2, sizeof(buffer[0]));
+        sprintf(buffer, "-%s", rightString);
+        return buffer;
+    }
+
+    double calculate(Tree<MathObject> *node) override {
+        return -node->getValue().num;
+    }
+};
+
 Function* FUNCTIONS[] = {
         new Sum(),
         new Sub(),
@@ -263,7 +283,8 @@ Function* FUNCTIONS[] = {
         new Cos(),
         new Log_e(),
         new Tan(),
-        new Ctg()
+        new Ctg(),
+        new Minus()
 };
 
 const int NO_FUNCTION_CODE = -1;

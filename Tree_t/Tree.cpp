@@ -309,17 +309,23 @@ bool Tree<T>::treeVerify(const char filename[], const char function[], int line)
 template<class T>
 void Tree<T>::connectSubtree(size_t index, Tree<T>* child) {
     treeVerify(VERIFY_CONTEXT);
+    assert(child);
     if (childIsEmpty(index) && child->isRoot()) {
         *size += child->getSize();
         Tree<T>** seq = child->allocTree();
         child->postorder(seq);
         size_t childSize = child->getSize();
+        free(child->size);
         for (int i = 0; i < childSize; ++i) {
-            free(seq[i]->size);
+            //free(seq[i]->size);
             seq[i]->size = size;
         }
         setChild(index, child);
         child->setParent(this);
+    } else {
+#ifndef NDEBUG
+        fprintf(stderr, "ERROR. In connecy subtree. Child place is already taken, or trying to connect not root.\n");
+#endif
     }
     treeVerify(VERIFY_CONTEXT);
 }

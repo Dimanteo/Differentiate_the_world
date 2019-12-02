@@ -50,6 +50,12 @@ Tree<MathObject>* Parser::getG() {
 
 Tree<MathObject>* Parser::getE() {
     skipSpaces();
+    Tree<MathObject>* val0 = nullptr;
+    if (*str == '-') {
+        val0 = new Tree<MathObject>(MathObject(MathObject::OPERATION_TYPE, getFunctionCode("--")));
+        str++;
+        skipSpaces();
+    }
     Tree<MathObject>* val = getT();
     skipSpaces();
     while ('+' == *str || *str == '-') {
@@ -64,7 +70,12 @@ Tree<MathObject>* Parser::getE() {
             val = makeVal("-", val, val1);
         }
     }
-    return val;
+    if (val0 != nullptr) {
+        val0->connectSubtree(RIGHT_CHILD, val);
+        return val0;
+    }
+    else
+        return val;
 }
 
 Tree<MathObject> *Parser::getT() {
