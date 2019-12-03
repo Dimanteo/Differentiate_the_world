@@ -15,7 +15,7 @@ public:
     const static size_t VARIABLES_MAX_COUNT = 100;
     char** variables;
     size_t variables_count = 0;
-    int diffVarCode = 0;
+    int diffVarCode = -1;
 
     Tree<MathObject>* tree = nullptr;
 
@@ -38,13 +38,15 @@ public:
 
     void replaceBy(size_t child, Tree<MathObject>* node);
 
+    void makeNumber(double num, Tree<MathObject>* node);
+
     bool isVariable(Tree<MathObject>* node);
 
     bool optimizationZero(Tree<MathObject> *node);
 
     bool optimizationOne(Tree<MathObject> *node);
 
-    bool optimizationCalculate(Tree<MathObject> *node);
+    bool optimizationCalc(Tree<MathObject> *node);
 
     void optimization();
 
@@ -129,7 +131,7 @@ int main() {
     FILE* log = fopen("../Debug/Diff.txt", "wb");
     fclose(log);
 
-    laba_killer->getDiff("x_l", "../Debug/LATEX.tex", 2);
+    laba_killer->getDiff("z", "../Debug/LATEX.tex", 2);
 
     system("pdflatex ../Debug/LATEX.tex");
     system("LATEX.pdf");
@@ -207,7 +209,8 @@ char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
                 rightString = texDump(rightString, node->getChild(RIGHT_CHILD));
             }
             char *output = FUNCTIONS[node->getValue().code]->texPrint(leftString, rightString);
-            if (!node->isRoot() && !node->getParent()->childIsEmpty(LEFT_CHILD) && FUNCTIONS[node->getValue().code]->priority < FUNCTIONS[node->getParent()->getValue().code]->priority) {
+            if (!node->isRoot() && !node->getParent()->childIsEmpty(LEFT_CHILD) &&
+            FUNCTIONS[node->getValue().code]->priority < FUNCTIONS[node->getParent()->getValue().code]->priority) {
                 buffer = (char*)realloc(buffer, strlen(buffer) + strlen(output) + 3);
                 strcat(buffer, "(");
                 strcat(buffer, output);
@@ -237,6 +240,8 @@ void Differentiator::setDiffVar(const char *var) {
             break;
         }
     }
+    variables[variables_count] = strdup(var);
+    diffVarCode = variables_count++;
 }
 
 int counter = 0;
@@ -339,6 +344,12 @@ void Differentiator::replaceBy(size_t child, Tree<MathObject>* node) {
     } else {
         node->removeSubTree(child);
     }
+}
+
+void Differentiator::makeNumber(double num, Tree<MathObject> *node) {
+    node->removeSubTree(LEFT_CHILD );
+    node->removeSubTree(RIGHT_CHILD);
+    node->setValue(MathObject(num));
 }
 
 //DSL
@@ -458,9 +469,9 @@ void Differentiator::optimization() {
         tree->postorder(sequence);
         for (int i = 0; i < tree->getSize(); ++i) {
             if (sequence[i]->getValue().type == MathObject::OPERATION_TYPE) {
-                modified = optimizationCalculate(sequence[i]);
+                modified = modified || optimizationCalc(sequence[i]);
                 modified = modified || optimizationZero(sequence[i]);
-                modified = modified || optimizationOne(sequence[i]);
+                modified = modified || optimizationOne (sequence[i]);
             }
         }
         free(sequence);
@@ -482,9 +493,7 @@ bool Differentiator::optimizationZero(Tree<MathObject> *node) {
     }
     if (it_is(*)) {
         if ((LEFT_IS(0)) || (RIGHT_IS(0))) {
-            node->removeSubTree(LEFT_CHILD);
-            node->removeSubTree(RIGHT_CHILD);
-            node->setValue(MathObject(0));
+            makeNumber(0, node);
             return true;
         }
     }
@@ -497,15 +506,17 @@ bool Differentiator::optimizationZero(Tree<MathObject> *node) {
     }
     if (it_is(^)) {
         if (RIGHT_IS(0)) {
-            node->removeSubTree(LEFT_CHILD);
-            node->removeSubTree(RIGHT_CHILD);
-            node->setValue(MathObject(1));
+            makeNumber(1, node);
             return true;
         }
         if (LEFT_IS(0)) {
-            node->removeSubTree(LEFT_CHILD );
-            node->removeSubTree(RIGHT_CHILD);
-            node->setValue(MathObject(0));
+            makeNumber(0, node);
+            return true;
+        }
+    }
+    if (it_is(/)) {
+        if (LEFT_IS(0)) {
+            makeNumber(0, node);
             return true;
         }
     }
@@ -544,12 +555,10 @@ bool Differentiator::optimizationOne(Tree<MathObject> *node) {
     return false;
 }
 
-bool Differentiator::optimizationCalculate(Tree<MathObject> *node) {
+bool Differentiator::optimizationCalc(Tree<MathObject> *node) {
     double value = FUNCTIONS[node->getValue().code]->calculate(node);
     if (!isnan(value)) {
-        node->setValue(value);
-        node->removeSubTree(LEFT_CHILD);
-        node->removeSubTree(RIGHT_CHILD);
+        makeNumber(value, node);
         return true;
     }
     return false;
