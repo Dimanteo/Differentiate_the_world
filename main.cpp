@@ -256,8 +256,6 @@ void Differentiator::setDiffVar(const char *var) {
     diffVarCode = variables_count++;
 }
 
-//TODO delete this
-
 int counter = 0;
 
 void drawGraph(const char filename[], int number, Tree<MathObject>* tree) {
@@ -268,17 +266,6 @@ void drawGraph(const char filename[], int number, Tree<MathObject>* tree) {
     tree->graphDump(Name, sequ);
     free(sequ);
     counter++;
-}
-
-void printTree (Tree<MathObject>* node, const char* msg) {
-    if (!node->childIsEmpty(LEFT_CHILD)) {
-        printTree(node->getChild(LEFT_CHILD), msg);
-    }
-    FILE* file = fopen("../Debug/Node.txt", "ab");
-    node->nodeDump(file, ERROR_STATE, msg,VERIFY_CONTEXT);
-    if (!node->childIsEmpty(RIGHT_CHILD)) {
-        printTree(node->getChild(RIGHT_CHILD), msg);
-    }
 }
 
 Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filename, int order) {
@@ -541,7 +528,10 @@ bool Differentiator::optimizationZero(Tree<MathObject> *node) {
             replaceBy(LEFT_CHILD, node);
             return true;
         }
-        //TODO LEFT_IS(0)
+        if (LEFT_IS(0)) {
+            node->removeSubTree(LEFT_CHILD);
+            node->setValue(MathObject(MathObject::OPERATION_TYPE, getFunctionCode("--")));
+        }
     }
     if (it_is(^)) {
         if (RIGHT_IS(0)) {
