@@ -168,7 +168,7 @@ Tree<T> **Tree<T>::inorder(Tree<T> **sequence) {
 
 template<class T>
 Tree<T> **Tree<T>::postorder(Tree<T> **sequence) {
-    assert(this);
+    assert(sequence);
     if (!childIsEmpty(LEFT_CHILD)) {
         sequence = getChild(LEFT_CHILD)->postorder(sequence);
     }

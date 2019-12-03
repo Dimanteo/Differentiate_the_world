@@ -256,7 +256,7 @@ struct Log_e : Function {
 struct Minus : Function {
     Minus (){
         token = strdup("--");
-        priority = 2;
+        priority = -1;
     }
     ~Minus() {
         free(token);

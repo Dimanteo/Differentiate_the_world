@@ -129,7 +129,10 @@ int main() {
     FILE* log = fopen("../Debug/Diff.txt", "wb");
     fclose(log);
 
-    laba_killer->getDiff("x", "../Debug/LATEX.tex", 2);
+    laba_killer->getDiff("x_l", "../Debug/LATEX.tex", 2);
+
+    system("pdflatex ../Debug/LATEX.tex");
+    system("LATEX.pdf");
 
     for (int i = 0; i < FUNCTIONS_COUNT; ++i) {
         delete(FUNCTIONS[i]);
@@ -488,8 +491,23 @@ bool Differentiator::optimizationZero(Tree<MathObject> *node) {
     if (it_is(-)) {
         if (RIGHT_IS(0)) {
             replaceBy(LEFT_CHILD, node);
+            return true;
         }
         //TODO LEFT_IS(0)
+    }
+    if (it_is(^)) {
+        if (RIGHT_IS(0)) {
+            node->removeSubTree(LEFT_CHILD);
+            node->removeSubTree(RIGHT_CHILD);
+            node->setValue(MathObject(1));
+            return true;
+        }
+        if (LEFT_IS(0)) {
+            node->removeSubTree(LEFT_CHILD );
+            node->removeSubTree(RIGHT_CHILD);
+            node->setValue(MathObject(0));
+            return true;
+        }
     }
     return false;
 }
@@ -502,6 +520,24 @@ bool Differentiator::optimizationOne(Tree<MathObject> *node) {
         }
         if (LEFT_IS(1)) {
             replaceBy(RIGHT_CHILD, node);
+            return true;
+        }
+    }
+    if (it_is(/)) {
+        if (RIGHT_IS(1)) {
+            replaceBy(LEFT_CHILD, node);
+            return true;
+        }
+    }
+    if (it_is(^)) {
+        if (RIGHT_IS(1)) {
+            replaceBy(LEFT_CHILD, node);
+            return true;
+        }
+        if (LEFT_IS(1)) {
+            node->removeSubTree(LEFT_CHILD );
+            node->removeSubTree(RIGHT_CHILD);
+            node->setValue(MathObject(1));
             return true;
         }
     }

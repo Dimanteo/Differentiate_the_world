@@ -50,12 +50,6 @@ Tree<MathObject>* Parser::getG() {
 
 Tree<MathObject>* Parser::getE() {
     skipSpaces();
-    Tree<MathObject>* val0 = nullptr;
-    if (*str == '-') {
-        val0 = new Tree<MathObject>(MathObject(MathObject::OPERATION_TYPE, getFunctionCode("--")));
-        str++;
-        skipSpaces();
-    }
     Tree<MathObject>* val = getT();
     skipSpaces();
     while ('+' == *str || *str == '-') {
@@ -70,12 +64,7 @@ Tree<MathObject>* Parser::getE() {
             val = makeVal("-", val, val1);
         }
     }
-    if (val0 != nullptr) {
-        val0->connectSubtree(RIGHT_CHILD, val);
-        return val0;
-    }
-    else
-        return val;
+    return val;
 }
 
 Tree<MathObject> *Parser::getT() {
@@ -188,6 +177,7 @@ Tree<MathObject> *Parser::getId() {
     while (isalnum(*str) || *str == '_' || *str == '\\' || *str == '{' || *str == '}') {
         str++;
     }
+    syntax_assert(str != start, 'V')
     char* name = (char *)calloc(str - start + 1, sizeof(name[0]));
     strncpy(name, start, str - start);
     int code = variables_count;
