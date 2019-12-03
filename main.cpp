@@ -5,8 +5,10 @@
 #include "Function.h"
 #include "Parser.h"
 #include <math.h>
+#include <windows.h>
 
 #define DIFF_GRAPH
+#define VERIFY_CONTEXT __FILE__, __PRETTY_FUNCTION__, __LINE__
 
 class Differentiator {
 
@@ -123,6 +125,7 @@ void Tree<MathObject>::genDot(Tree<MathObject> *node, FILE *file) {
 
 
 int main() {
+    SetConsoleOutputCP(CP_UTF8);
     FILE* file = fopen("Input.txt", "rb");
     Differentiator* laba_killer = new Differentiator();
     laba_killer->parse(file);
@@ -131,7 +134,12 @@ int main() {
     FILE* log = fopen("../Debug/Diff.txt", "wb");
     fclose(log);
 
-    laba_killer->getDiff("z", "../Debug/LATEX.tex", 2);
+    /*char var[20] = "";
+    int order = 0;
+    printf("Введите переменную дифференцирования и порядок производной\n");
+    scanf("%s %d", var, &order);*/
+
+    laba_killer->getDiff("x", "../Debug/LATEX.tex", 2);
 
     system("pdflatex ../Debug/LATEX.tex");
     system("LATEX.pdf");
@@ -194,7 +202,11 @@ char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
     switch (node->getValue().type) {
         case MathObject::NUMBER_TYPE: {
             char num_string[MathObject::MAX_LENGTH] = "";
-            sprintf(num_string, "%g", node->getValue().num);
+            if  (node->getValue().num < 0) {
+                sprintf(num_string, "(%g)", node->getValue().num);
+            } else {
+                sprintf(num_string, "%g", node->getValue().num);
+            }
             buffer = (char*)realloc(buffer, strlen(buffer) + strlen(num_string) + 1);
             strcat(buffer, num_string);
             break;
@@ -237,12 +249,14 @@ void Differentiator::setDiffVar(const char *var) {
     for (int i = 0; i < variables_count; ++i) {
         if (strcmp(variables[i], var) == 0) {
             diffVarCode = i;
-            break;
+            return;
         }
     }
     variables[variables_count] = strdup(var);
     diffVarCode = variables_count++;
 }
+
+//TODO delete this
 
 int counter = 0;
 
@@ -254,6 +268,17 @@ void drawGraph(const char filename[], int number, Tree<MathObject>* tree) {
     tree->graphDump(Name, sequ);
     free(sequ);
     counter++;
+}
+
+void printTree (Tree<MathObject>* node, const char* msg) {
+    if (!node->childIsEmpty(LEFT_CHILD)) {
+        printTree(node->getChild(LEFT_CHILD), msg);
+    }
+    FILE* file = fopen("../Debug/Node.txt", "ab");
+    node->nodeDump(file, ERROR_STATE, msg,VERIFY_CONTEXT);
+    if (!node->childIsEmpty(RIGHT_CHILD)) {
+        printTree(node->getChild(RIGHT_CHILD), msg);
+    }
 }
 
 Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filename, int order) {
@@ -279,13 +304,16 @@ Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filen
     drawGraph("../Debug/Diff", counter, tree);
 #endif
 
-    dump("../Debug/Diff.txt", OK_STATE, "call from getDiff()", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+    dump("../Debug/Diff.txt", OK_STATE, "Call from getDiff()[0]", VERIFY_CONTEXT);
+
     for (int i = 0; i < order; ++i) {
         Tree<MathObject>* diffTree = diff(tree);
         delete(tree);
         tree = diffTree;
 
+        dump("../Debug/Diff.txt", OK_STATE, "Before optimization", VERIFY_CONTEXT);
         optimization();
+        dump("../Debug/Diff.txt", OK_STATE, "After optimization", VERIFY_CONTEXT);
 
         fprintf(latex, "\\begin{equation}\n");
         char* buffer = (char*)calloc(1, sizeof(buffer[0]));
@@ -389,6 +417,12 @@ overrideBinaryOperator(/)
 
 overrideBinaryOperator(^)
 
+Tree<MathObject>* operator - (Tree<MathObject>& node) {
+    Tree<MathObject>* minus = newOperation(--);
+    minus->connectSubtree(RIGHT_CHILD, &node);
+    return minus;
+}
+
 #define overrideUnaryOperator(op) Tree<MathObject>* Differentiator::op (Tree<MathObject>* node) {\
                                       Tree<MathObject>* res = newOperation(op);\
                                       res->connectSubtree(RIGHT_CHILD, node);\
@@ -430,13 +464,13 @@ Tree<MathObject>* Differentiator::diff(Tree<MathObject>* node) {
                 return *cos(R) * *dR;
             }
             if (it_is(cos)) {
-                return *(*sin(R) * (-1)) * *dR;
+                return *(-*sin(R)) * *dR;
             }
             if (it_is(tg)) {
                 return *(1 / *(*cos(R) ^ 2)) * *dR;
             }
             if (it_is(ctg)) {
-                return -1 * *(1 / *(*sin(R) ^ 2));
+                return -*(1 / *(*sin(R) ^ 2));
             }
             if (it_is(^)) { //L^R
                 bool baseIsVar  = isVariable(node->getChild(LEFT_CHILD));
@@ -455,6 +489,11 @@ Tree<MathObject>* Differentiator::diff(Tree<MathObject>* node) {
             }
             if (it_is(ln)) {
                 return *(1 / *R) * *dR;
+            }
+            if (it_is(--)) {
+                Tree<MathObject>* minus = newOperation(--);
+                minus->connectSubtree(RIGHT_CHILD, dR);
+                return minus;
             }
             break;
         }
@@ -574,3 +613,4 @@ bool Differentiator::optimizationCalc(Tree<MathObject> *node) {
 #undef newOperation
 #undef LEFT_IS
 #undef RIGHT_IS
+#undef VERIFY_CONTEXT

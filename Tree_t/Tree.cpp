@@ -142,7 +142,7 @@ bool Tree<T>::isRoot() {
 
 template<class T>
 Tree<T>** Tree<T>::preorder(Tree<T> **sequence) {
-    assert(this);
+    assert(sequence);
     sequence++[0] = this;
     if (!childIsEmpty(LEFT_CHILD)) {
         sequence = getChild(LEFT_CHILD)->preorder(sequence);
@@ -155,7 +155,7 @@ Tree<T>** Tree<T>::preorder(Tree<T> **sequence) {
 
 template<class T>
 Tree<T> **Tree<T>::inorder(Tree<T> **sequence) {
-    assert(this);
+    assert(sequence);
     if (!childIsEmpty(LEFT_CHILD)) {
         sequence = getChild(LEFT_CHILD)->inorder(sequence);
     }
@@ -317,14 +317,13 @@ void Tree<T>::connectSubtree(size_t index, Tree<T>* child) {
         size_t childSize = child->getSize();
         free(child->size);
         for (int i = 0; i < childSize; ++i) {
-            //free(seq[i]->size);
             seq[i]->size = size;
         }
         setChild(index, child);
         child->setParent(this);
     } else {
 #ifndef NDEBUG
-        fprintf(stderr, "ERROR. In connecy subtree. Child place is already taken, or trying to connect not root.\n");
+        fprintf(stderr, "ERROR. In connectSubtree(). Child place is already taken, or child not root.\n");
 #endif
     }
     treeVerify(VERIFY_CONTEXT);

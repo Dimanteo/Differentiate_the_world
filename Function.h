@@ -269,7 +269,13 @@ struct Minus : Function {
     }
 
     double calculate(Tree<MathObject> *node) override {
-        return -node->getValue().num;
+        if (RIGHT_IS_NUMBER)
+            if (node->getChild(RIGHT_CHILD)->getValue().num != 0)
+                return -(node->getChild(RIGHT_CHILD)->getValue().num);
+            else
+                return 0;
+        else
+            return NAN;
     }
 };
 
