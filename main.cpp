@@ -7,7 +7,8 @@
 #include <math.h>
 #include <windows.h>
 
-#define DIFF_GRAPH
+#include "Ochevidno.h"
+
 #define VERIFY_CONTEXT __FILE__, __PRETTY_FUNCTION__, __LINE__
 
 class Differentiator {
@@ -51,6 +52,8 @@ public:
     bool optimizationCalc(Tree<MathObject> *node);
 
     void optimization();
+
+    FILE* texPreprocess(const char* filename, const char* diffVar, int order);
 
 //DSL functions. Defined in #define overrideUnaryOperator
     Tree<MathObject>* cos (Tree<MathObject>* node);
@@ -134,12 +137,12 @@ int main() {
     FILE* log = fopen("../Debug/Diff.txt", "wb");
     fclose(log);
 
-    /*char var[20] = "";
+    char var[20] = "";
     int order = 0;
     printf("Введите переменную дифференцирования и порядок производной\n");
-    scanf("%s %d", var, &order);*/
+    scanf("%s %d", var, &order);
 
-    laba_killer->getDiff("x", "../Debug/LATEX.tex", 2);
+    laba_killer->getDiff(var, "../Debug/LATEX.tex", order);
 
     system("pdflatex ../Debug/LATEX.tex");
     system("LATEX.pdf");
@@ -197,6 +200,20 @@ void Differentiator::dump(const char outFileName[], const char state[], const ch
 #endif
 }
 
+char* prefixMinusTex(Tree<MathObject>* node, char* rightString) {
+    if( node->getValue().code == getFunctionCode("--") &&
+        (node->getChild(RIGHT_CHILD)->getValue().code == getFunctionCode("+") ||
+         node->getChild(RIGHT_CHILD)->getValue().code == getFunctionCode("-"))) {
+        char* surrounded = (char*)calloc(strlen(rightString) + 3, sizeof(surrounded[0]));
+        strcpy(surrounded, "(");
+        strcat(surrounded, rightString);
+        strcat(surrounded, ")");
+        free(rightString);
+        rightString = surrounded;
+    }
+    return rightString;
+}
+
 char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
     assert(node);
     switch (node->getValue().type) {
@@ -219,16 +236,7 @@ char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
             char *rightString = (char*)calloc(1, sizeof(rightString[0]));
             if (!node->childIsEmpty(RIGHT_CHILD)) {
                 rightString = texDump(rightString, node->getChild(RIGHT_CHILD));
-                if( node->getValue().code == getFunctionCode("--") &&
-                   (node->getChild(RIGHT_CHILD)->getValue().code == getFunctionCode("+") ||
-                    node->getChild(RIGHT_CHILD)->getValue().code == getFunctionCode("-"))) {
-                        char* surrounded = (char*)calloc(strlen(rightString) + 3, sizeof(surrounded[0]));
-                        strcpy(surrounded, "(");
-                        strcat(surrounded, rightString);
-                        strcat(surrounded, ")");
-                        free(rightString);
-                        rightString = surrounded;
-                }
+                rightString = prefixMinusTex(node, rightString);
             }
             char *output = FUNCTIONS[node->getValue().code]->texPrint(leftString, rightString);
             if (!node->isRoot() && !node->getParent()->childIsEmpty(LEFT_CHILD) &&
@@ -278,8 +286,14 @@ void drawGraph(const char filename[], int number, Tree<MathObject>* tree) {
     counter++;
 }
 
-Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filename, int order) {
-    setDiffVar(diffVar);
+void printMemes(FILE* file, int complexity) {
+    if (complexity >= 10) {
+        int i = rand() % MEMS_SIZE;
+        fprintf(file, "%s\n", MEMES[i]);
+    }
+}
+
+FILE*  Differentiator::texPreprocess(const char* filename, const char* diffVar, int order) {
     FILE* latex = fopen(filename, "wb");
     fprintf(latex, "\\documentclass[a4paper,12pt]{article}\n"
                    "\\usepackage[T2A]{fontenc}\n"
@@ -288,7 +302,8 @@ Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filen
                    "\\usepackage{amsmath,amsfonts,amssymb,amsthm,mathtools} \n"
                    "\\usepackage{float}\n"
                    "\\usepackage{wasysym}\n"
-                   "\\begin{document}\n");
+                   "\\begin{document}\n"
+                   "Рассмотрим следующее выражение. Найдем производную %d-го порядка по $%s$\n", order, diffVar);
 
     fprintf(latex, "$$");
     char* equation = (char*)calloc(1, sizeof(equation[0]));
@@ -296,21 +311,26 @@ Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filen
     fwrite(equation, sizeof(equation[0]), strlen(equation), latex);
     free(equation);
     fprintf(latex, "$$\n");
+    return latex;
+}
+
+Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filename, int order) {
+    setDiffVar(diffVar);
+    FILE* latex = texPreprocess(filename, diffVar, order);
 
 #ifdef DIFF_GRAPH
     drawGraph("../Debug/Diff", counter, tree);
 #endif
 
-    dump("../Debug/Diff.txt", OK_STATE, "Call from getDiff()[0]", VERIFY_CONTEXT);
-
     for (int i = 0; i < order; ++i) {
         Tree<MathObject>* diffTree = diff(tree);
+        int complexity = abs((int)tree->getSize() - (int)diffTree->getSize());
         delete(tree);
         tree = diffTree;
 
-        dump("../Debug/Diff.txt", OK_STATE, "Before optimization", VERIFY_CONTEXT);
         optimization();
-        dump("../Debug/Diff.txt", OK_STATE, "After optimization", VERIFY_CONTEXT);
+
+        printMemes(latex, complexity);
 
         fprintf(latex, "\\begin{equation}\n");
         char* buffer = (char*)calloc(1, sizeof(buffer[0]));
@@ -323,7 +343,8 @@ Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filen
         drawGraph("../Debug/Diff", counter, tree);
 #endif
     }
-    fprintf(latex, "\\end{document}");
+    fprintf(latex, "Дальнейшие рассуждения, ввиду очевидности, предоставляются читателю в качестве упражнения.\n"
+                   "\\end{document}");
     fclose(latex);
 }
 
