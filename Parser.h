@@ -18,6 +18,8 @@ struct Parser {
 
     Tree<MathObject>* getG();
     Tree<MathObject>* getE();
+    Tree<MathObject>* getSign();
+    Tree<MathObject>* getAbs();
     Tree<MathObject>* getT();
     Tree<MathObject>* getPow();
     Tree<MathObject>* getP();
@@ -49,6 +51,28 @@ Tree<MathObject>* Parser::getG() {
 }
 
 Tree<MathObject>* Parser::getE() {
+    skipSpaces();
+    return getSign();
+}
+
+Tree<MathObject>* Parser::getSign() {
+    skipSpaces();
+    Tree<MathObject>* minus = nullptr;
+    if (*str == '-') {
+        minus = new Tree<MathObject>(MathObject(MathObject::OPERATION_TYPE, getFunctionCode("--")));
+        str++;
+        skipSpaces();
+    }
+    Tree<MathObject>* val = getAbs();
+    if (minus != nullptr) {
+        minus->connectSubtree(RIGHT_CHILD, val);
+        return minus;
+    } else {
+        return val;
+    }
+}
+
+Tree<MathObject>* Parser::getAbs() {
     skipSpaces();
     Tree<MathObject>* val = getT();
     skipSpaces();
@@ -103,11 +127,6 @@ Tree<MathObject> *Parser::getPow() {
 Tree<MathObject> *Parser::getP() {
     skipSpaces();
     Tree<MathObject>* minus = nullptr;
-    if (*str == '-') {
-        minus = new Tree<MathObject>(MathObject(MathObject::OPERATION_TYPE, getFunctionCode("--")));
-        str++;
-        skipSpaces();
-    }
     if (*str == '(') {
         str++;
         skipSpaces();
@@ -116,26 +135,14 @@ Tree<MathObject> *Parser::getP() {
         syntax_assert(*str == ')', ')')
         str++;
         skipSpaces();
-        if (minus != nullptr) {
-            minus->connectSubtree(RIGHT_CHILD, val);
-            return minus;
-        }
         return val;
     } else if ('0' <= *str && *str <= '9') {
         Tree<MathObject>* val = getN();
         skipSpaces();
-        if (minus != nullptr) {
-            minus->connectSubtree(RIGHT_CHILD, val);
-            return minus;
-        }
         return val;
     } else {
         Tree<MathObject>* val =getFun();
         skipSpaces();
-        if (minus != nullptr) {
-            minus->connectSubtree(RIGHT_CHILD, val);
-            return minus;
-        }
         return val;
     }
 }

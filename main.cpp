@@ -219,6 +219,16 @@ char * Differentiator::texDump(char *buffer, Tree<MathObject>* node) {
             char *rightString = (char*)calloc(1, sizeof(rightString[0]));
             if (!node->childIsEmpty(RIGHT_CHILD)) {
                 rightString = texDump(rightString, node->getChild(RIGHT_CHILD));
+                if( node->getValue().code == getFunctionCode("--") &&
+                   (node->getChild(RIGHT_CHILD)->getValue().code == getFunctionCode("+") ||
+                    node->getChild(RIGHT_CHILD)->getValue().code == getFunctionCode("-"))) {
+                        char* surrounded = (char*)calloc(strlen(rightString) + 3, sizeof(surrounded[0]));
+                        strcpy(surrounded, "(");
+                        strcat(surrounded, rightString);
+                        strcat(surrounded, ")");
+                        free(rightString);
+                        rightString = surrounded;
+                }
             }
             char *output = FUNCTIONS[node->getValue().code]->texPrint(leftString, rightString);
             if (!node->isRoot() && !node->getParent()->childIsEmpty(LEFT_CHILD) &&
