@@ -15,5 +15,6 @@ char* MEMES[] = {
 };
 
 const int MEMS_SIZE = 10;
+const int COMPLEXITY_BORDER = 7;
 
 #endif //DIFFERENTIATOR_OCHEVIDNO_H

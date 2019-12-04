@@ -9,6 +9,8 @@
 
 #include "Ochevidno.h"
 
+#define DIFF_GRAPH
+
 #define VERIFY_CONTEXT __FILE__, __PRETTY_FUNCTION__, __LINE__
 
 class Differentiator {
@@ -51,7 +53,7 @@ public:
 
     bool optimizationCalc(Tree<MathObject> *node);
 
-    void optimization();
+    bool optimization();
 
     FILE* texPreprocess(const char* filename, const char* diffVar, int order);
 
@@ -202,6 +204,7 @@ void Differentiator::dump(const char outFileName[], const char state[], const ch
 
 char* prefixMinusTex(Tree<MathObject>* node, char* rightString) {
     if( node->getValue().code == getFunctionCode("--") &&
+         node->getChild(RIGHT_CHILD)->getValue().type == MathObject::OPERATION_TYPE &&
         (node->getChild(RIGHT_CHILD)->getValue().code == getFunctionCode("+") ||
          node->getChild(RIGHT_CHILD)->getValue().code == getFunctionCode("-"))) {
         char* surrounded = (char*)calloc(strlen(rightString) + 3, sizeof(surrounded[0]));
@@ -287,7 +290,7 @@ void drawGraph(const char filename[], int number, Tree<MathObject>* tree) {
 }
 
 void printMemes(FILE* file, int complexity) {
-    if (complexity >= 10) {
+    if (complexity >= COMPLEXITY_BORDER) {
         int i = rand() % MEMS_SIZE;
         fprintf(file, "%s\n", MEMES[i]);
     }
@@ -324,20 +327,21 @@ Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filen
 
     for (int i = 0; i < order; ++i) {
         Tree<MathObject>* diffTree = diff(tree);
-        int complexity = abs((int)tree->getSize() - (int)diffTree->getSize());
+        int complexity = (int)tree->getSize();
         delete(tree);
         tree = diffTree;
 
-        optimization();
-
-        printMemes(latex, complexity);
-
-        fprintf(latex, "\\begin{equation}\n");
-        char* buffer = (char*)calloc(1, sizeof(buffer[0]));
-        buffer = texDump(buffer, tree);
-        fwrite(buffer, sizeof(buffer[0]), strlen(buffer), latex);
-        free(buffer);
-        fprintf(latex, "\n\\end{equation}\n");
+        while (optimization()) {
+            complexity = abs(complexity - (int)tree->getSize());
+            printMemes(latex, complexity);
+            fprintf(latex, "\\begin{equation}\n");
+            char *buffer = (char *) calloc(1, sizeof(buffer[0]));
+            buffer = texDump(buffer, tree);
+            fwrite(buffer, sizeof(buffer[0]), strlen(buffer), latex);
+            free(buffer);
+            fprintf(latex, "\n\\end{equation}\n");
+            complexity = tree->getSize();
+        }
 
 #ifdef DIFF_GRAPH
         drawGraph("../Debug/Diff", counter, tree);
@@ -518,10 +522,10 @@ Tree<MathObject>* Differentiator::diff(Tree<MathObject>* node) {
     }
 }
 
-void Differentiator::optimization() {
-    bool modified = true;
-    while(modified) {
-        modified = false;
+bool Differentiator::optimization() {
+    //bool modified = true;
+    //while(modified) {
+        bool modified = false;
         Tree<MathObject>** sequence = tree->allocTree();
         tree->postorder(sequence);
         for (int i = 0; i < tree->getSize(); ++i) {
@@ -532,7 +536,8 @@ void Differentiator::optimization() {
             }
         }
         free(sequence);
-    }
+    //}
+    return modified;
 }
 
 #define LEFT_IS(arg)  node->getChild(LEFT_CHILD )->getValue().type == MathObject::NUMBER_TYPE && node->getChild(LEFT_CHILD )->getValue().num == arg
