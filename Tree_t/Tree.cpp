@@ -244,6 +244,7 @@ void Tree<T>::genDot(Tree<T> *node, FILE *file) {
 template <class T>
 void Tree<T>::graphDump(const char *outFIle, Tree<T>** sequence) {
     FILE* dotlog = fopen(TREE_DOT, "wb");
+    assert(dotlog);
     fprintf(dotlog, "digraph G{\n"
                     "\trankdir = TB;\n"
                     "\t");
@@ -270,7 +271,6 @@ void Tree<T>::treeDump(FILE *log, const char *state, const char *message, const 
     sprintf(autoName, "%d%s", DOT_FILE_COUNTER, TREE_PNG);
     graphDump(autoName, sequence);
 #endif
-
     for (int i = 0; i < getSize(); ++i) {
         sequence[i]->nodeDump(log, state, "Tree dump member", filename, function, line);
     }
@@ -285,7 +285,6 @@ bool Tree<T>::treeVerify(const char filename[], const char function[], int line)
     FILE* file = fopen(TREE_LOG_NAME, "ab");
     Tree<T>** sequence = (Tree<T>**)calloc(getSize(), sizeof(sequence[0]));
     getRoot()->preorder(sequence);
-
     TREE_ASSERT(children != nullptr, Children pointer is NULL)
     TREE_ASSERT(size != nullptr, size pointer is NULL)
     TREE_ASSERT(getSize() > 0, incorrect size)
@@ -298,7 +297,6 @@ bool Tree<T>::treeVerify(const char filename[], const char function[], int line)
 #ifdef OK_DUMP
     treeDump(file, OK_STATE, "It's ok ^..^", filename, function, line, sequence);
 #endif
-
     free(sequence);
 
     fclose(file);

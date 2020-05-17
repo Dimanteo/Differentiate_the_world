@@ -1,11 +1,10 @@
 #ifndef DIFFERENTIATOR_FUNCTION_H
 #define DIFFERENTIATOR_FUNCTION_H
 
-#include <mem.h>
 #include <assert.h>
 #include <cstdlib>
 #include "MathObject.h"
-#include "Tree_t\Tree.h"
+#include "Tree_t/Tree.h"
 
 struct Function {
     char* token;

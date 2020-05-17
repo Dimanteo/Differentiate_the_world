@@ -1,7 +1,7 @@
 #ifndef DIFFERENTIATOR_PARSER_H
 #define DIFFERENTIATOR_PARSER_H
 
-#include "Tree_t\Tree.h"
+#include "Tree_t/Tree.h"
 #include "MathObject.h"
 #include "Function.h"
 #define syntax_assert(condition, exp) if(!(condition)) {fprintf(stderr, "syntax error: expected %c, got %c\n",exp, *str);assert(condition);}

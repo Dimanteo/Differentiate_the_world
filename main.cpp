@@ -1,15 +1,17 @@
 #include <string.h>
-#include "Tree_t\Tree.cpp"
-#include "My_Headers\txt_files.h"
+#include "Tree_t/Tree.cpp"
+#include "My_Headers/txt_files.h"
 #include "MathObject.h"
 #include "Function.h"
 #include "Parser.h"
 #include <math.h>
-#include <windows.h>
-
 #include "Ochevidno.h"
 
-#define DIFF_GRAPH
+/* Defines, turn them on with -D <option>:
+    OK_DUMP - generate log on every step, even without errors detected.
+    DO_GRAPH - generate tree graph for every dump.
+    DIFF_GRAPH - draw graph after every derivative taken.
+*/
 
 #define VERIFY_CONTEXT __FILE__, __PRETTY_FUNCTION__, __LINE__
 
@@ -130,13 +132,12 @@ void Tree<MathObject>::genDot(Tree<MathObject> *node, FILE *file) {
 
 
 int main() {
-    SetConsoleOutputCP(CP_UTF8);
     FILE* file = fopen("Input.txt", "rb");
     Differentiator* laba_killer = new Differentiator();
     laba_killer->parse(file);
     fclose(file);
 
-    FILE* log = fopen("../Debug/Diff.txt", "wb");
+    FILE* log = fopen("Debug/Diff.txt", "wb");
     fclose(log);
 
     char var[20] = "";
@@ -144,9 +145,9 @@ int main() {
     printf("Введите переменную дифференцирования и порядок производной\n");
     scanf("%s %d", var, &order);
 
-    laba_killer->getDiff(var, "../Debug/LATEX.tex", order);
+    laba_killer->getDiff(var, "Debug/LATEX.tex", order);
 
-    system("pdflatex ../Debug/LATEX.tex");
+    system("pdflatex Debug/LATEX.tex");
     system("LATEX.pdf");
 
     for (int i = 0; i < FUNCTIONS_COUNT; ++i) {
@@ -322,7 +323,7 @@ Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filen
     FILE* latex = texPreprocess(filename, diffVar, order);
 
 #ifdef DIFF_GRAPH
-    drawGraph("../Debug/Diff", counter, tree);
+    drawGraph("Debug/Diff", counter, tree);
 #endif
 
     for (int i = 0; i < order; ++i) {
@@ -344,7 +345,7 @@ Tree<MathObject> *Differentiator::getDiff(const char *diffVar, const char *filen
         }
 
 #ifdef DIFF_GRAPH
-        drawGraph("../Debug/Diff", counter, tree);
+        drawGraph("Debug/Diff", counter, tree);
 #endif
     }
     fprintf(latex, "Дальнейшие рассуждения, ввиду очевидности, предоставляются читателю в качестве упражнения.\n"
