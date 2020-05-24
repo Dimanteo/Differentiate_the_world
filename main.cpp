@@ -8,9 +8,10 @@
 #include "Ochevidno.h"
 
 /* Defines, turn them on with -D <option>:
-    OK_DUMP - generate log on every step, even without errors detected.
-    DO_GRAPH - generate tree graph for every dump.
-    DIFF_GRAPH - draw graph after every derivative taken.
+    NDEBUG      - turn off debugging.
+    OK_DUMP     - generate log on every step, even without errors detected.
+    DO_GRAPH    - generate tree graph for every dump.
+    DIFF_GRAPH  - draw graph after every derivative taken.
 */
 
 #define VERIFY_CONTEXT __FILE__, __PRETTY_FUNCTION__, __LINE__
@@ -131,8 +132,13 @@ void Tree<MathObject>::genDot(Tree<MathObject> *node, FILE *file) {
 
 
 
-int main() {
-    FILE* file = fopen("Input.txt", "rb");
+int main(int argc, char* argv[]) {
+    if (argc < 2)
+    {
+        printf("Введите имя входного файла\n");
+        return 1;
+    }
+    FILE* file = fopen(argv[1], "rb");
     Differentiator* laba_killer = new Differentiator();
     laba_killer->parse(file);
     fclose(file);
@@ -148,7 +154,7 @@ int main() {
     laba_killer->getDiff(var, "Debug/LATEX.tex", order);
 
     system("pdflatex Debug/LATEX.tex");
-    system("LATEX.pdf");
+    system("xreader LATEX.pdf");
 
     for (int i = 0; i < FUNCTIONS_COUNT; ++i) {
         delete(FUNCTIONS[i]);
